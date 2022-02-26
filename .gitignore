@@ -48,6 +48,10 @@ ExportedObj/
 *.opendb
 *.VC.db
 
+# Unity TestRunner scenes
+/[Aa]ssets/InitTestScene*.unity
+/[Aa]ssets/InitTestScene*.unity.meta
+
 # Unity3D generated meta files
 *.pidb.meta
 *.pdb.meta
