@@ -1,86 +1,93 @@
 ﻿using System;
 using System.Collections.Generic;
-using UnityEngine;
 
 namespace Homeworlds.Logical
 {
-	public class Board
+	public class BoardManager : IBoardManager
 	{
-		BoardState current;
+		private BoardState current;
+
+		public BoardState Current
+		{
+			get
+			{
+				return current;
+			}
+			set
+			{
+				current = value;
+				AfterStateUpdate?.Invoke(current, GameState);
+			}
+		}
+		public eGameState GameState { get; private set; }
+		public event Action<BoardState, eGameState> AfterStateUpdate;
 
 		public void CreateNew()
 		{
-			current = new BoardState();
-			BoardState = eBoardState.Setup;
+			Current = new BoardState();
+			GameState = eGameState.Setup;
 		}
 
 		public void EndTurn()
 		{
-			ePlayer activePlayer = current.ActivePlayer == ePlayer.Player1 ? ePlayer.Player2 : ePlayer.Player1;
+			ePlayer activePlayer = Current.ActivePlayer == ePlayer.Player1 ? ePlayer.Player2 : ePlayer.Player1;
+			BoardState newState = new BoardState(Current.Bank, Current.Stars, activePlayer);
 
-			current = new BoardState(current.Bank, current.Stars,
-				activePlayer, 1 + current.StepNumber);
+			changeGameState(newState);
+			Current = newState;
 		}
 
 		public void UpdateResources(ResourcesState i_NewState)
 		{
-			current = new BoardState(i_NewState, current.Stars,
-				current.ActivePlayer, current.StepNumber);
+			Current = new BoardState(i_NewState, Current.Stars,
+				Current.ActivePlayer);
 		}
 
 		public void SetupHomeWorld(HomeWorld i_HomeWorld)
 		{
-			int starIdx = current.ActivePlayer == ePlayer.Player1 ? 0 : 1;
-			List<Star> stars = current.Stars;
-			stars[starIdx] = i_HomeWorld;
+			BoardState newState = new BoardState(
+				Current.Bank,
+				new List<Star>(Current.Stars) { i_HomeWorld },
+				Current.ActivePlayer);
 
-			current = new BoardState(current.Bank, stars,
-				current.ActivePlayer, 1 + current.StepNumber);
-
-			if(current.Player1Star != null && current.Player2Star != null)
+			if (newState.Player1Star != null && newState.Player2Star != null)
 			{
-				BoardState = eBoardState.Running;
+				GameState = eGameState.Running;
 			}
+
+			Current = newState;
 		}
 
-		public void UpdateStars(List<Star> i_NewStarsState, bool i_IsStep)
+		public void UpdateStars(IEnumerable<Star> i_NewStarsState)
 		{
-			if(BoardState != eBoardState.Running)
+			if (GameState != eGameState.Running)
 			{
-				Debug.LogError("Attempt to Play in an Uninitialize Board!");
+				bool isEnded = GameState != eGameState.Setup;
+				throw new InvalidOperationException($"Attempt to play {(isEnded ? "after game ended!" : "in an uninitialized game!")}");
 			}
 
-			int stepNumber = current.StepNumber + (i_IsStep ? 1 : 0);
-
-			current = new BoardState(current.Bank, i_NewStarsState,
-				current.ActivePlayer, stepNumber);
-
-			if(i_IsStep)
-			{
-				checkBoardStateChanged();
-			}
+			Current = new BoardState(Current.Bank, i_NewStarsState, Current.ActivePlayer);
 		}
 
-		private void checkBoardStateChanged()
+		private void changeGameState(BoardState newState)
 		{
-			if (BoardState == eBoardState.Running)
+			if (GameState == eGameState.Running)
 			{
-				if (current.Player1Star == null || current.Player1Star.IsEmpty)
+				bool player1Loss = newState.Player1Star == null || newState.Player1Star.IsEmpty;
+				bool player2Loss = newState.Player2Star == null || newState.Player2Star.IsEmpty;
+				if (player1Loss && player2Loss)
 				{
-					BoardState = eBoardState.Player2Won;
+					GameState = eGameState.Draw;
 				}
-				else if (current.Player2Star == null || current.Player2Star.IsEmpty)
+				else if (newState.Player1Star == null || newState.Player1Star.IsEmpty)
 				{
-					BoardState = eBoardState.Player1Won;
+					GameState = eGameState.Player2Won;
+				}
+				else if (newState.Player2Star == null || newState.Player2Star.IsEmpty)
+				{
+					GameState = eGameState.Player1Won;
 				}
 			}
 		}
-
-		public BoardState Current
-		{
-			get { return current; }
-		}
-
-		public eBoardState BoardState { get; private set; }
 	}
 }

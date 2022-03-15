@@ -1,29 +1,37 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
+using System.Linq;
 
 namespace Homeworlds.Logical
 {
 	public class BoardState
 	{
 		private readonly ResourcesState r_Bank;
-		private readonly List<Star> r_Stars;
+		private readonly HashSet<Star> r_Stars;
 		private readonly ePlayer r_ActivePlayer;
-		private readonly int r_StepNumber;
+		private readonly HomeWorld r_Player1HomeWorld;
+		private readonly HomeWorld r_Player2HomeWorld;
 
 		public BoardState()
-			: this(ResourcesState.MaxState, new Star[2],
-				  ePlayer.Player1, 0)
+			: this(ResourcesState.Full, null,
+				  ePlayer.Player1)
 		{
 		}
 
 		public BoardState(ResourcesState i_BankState, IEnumerable<Star> i_Stars,
-			ePlayer i_ActivePlayer, int i_StepNumber)
+			ePlayer i_ActivePlayer)
 		{
 			r_Bank = i_BankState;
-			r_Stars = new List<Star>(i_Stars);
+			r_Stars = new HashSet<Star>();
+			r_Player1HomeWorld = r_Player2HomeWorld = null;
+			if (i_Stars != null)
+			{
+				r_Stars.UnionWith(i_Stars);
+				r_Player1HomeWorld = i_Stars.FirstOrDefault(s => s is HomeWorld && ((HomeWorld)s).Owner == ePlayer.Player1) as HomeWorld;
+				r_Player1HomeWorld = i_Stars.FirstOrDefault(s => s is HomeWorld && ((HomeWorld)s).Owner == ePlayer.Player2) as HomeWorld;
+			}
 			r_ActivePlayer = i_ActivePlayer;
-			r_StepNumber = i_StepNumber;
 		}
 
 		public ResourcesState Bank
@@ -34,7 +42,7 @@ namespace Homeworlds.Logical
 			}
 		}
 
-		public List<Star> Stars
+		public IEnumerable<Star> Stars
 		{
 			get
 			{
@@ -54,7 +62,7 @@ namespace Homeworlds.Logical
 		{
 			get
 			{
-				return r_Stars.Count > 0 ? (HomeWorld)r_Stars[0] : null;
+				return r_Player1HomeWorld;
 			}
 		}
 
@@ -62,15 +70,7 @@ namespace Homeworlds.Logical
 		{
 			get
 			{
-				return r_Stars.Count > 1 ? (HomeWorld)r_Stars[1] : null;
-			}
-		}
-
-		public int StepNumber
-		{
-			get
-			{
-				return r_StepNumber;
+				return r_Player2HomeWorld;
 			}
 		}
 	}

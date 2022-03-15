@@ -2,7 +2,7 @@
 
 namespace Homeworlds.Logical
 {
-	public class Ship
+	public class Ship : IEquatable<Ship>
 	{
 		private Star m_Location;
 
@@ -26,7 +26,7 @@ namespace Homeworlds.Logical
 		public ePlayer Owner { get; set; }
 
 		public Ship()
-			: this(ePlayer.Player1, Pip.Empty)
+			: this(ePlayer.Player1, Pip.SmallRed)
 		{ }
 
 		public Ship(ePlayer i_Owner, Pip i_Attributes)
@@ -36,5 +36,31 @@ namespace Homeworlds.Logical
 
 			m_Location = null;
 		}
+
+		public override int GetHashCode()
+		{
+			return 2*Attributes.GetHashCode()+(int)Owner;
+		}
+
+		public override bool Equals(object obj)
+		{
+			return obj is Ship && ((Ship)obj) == this;
+		}
+
+		public bool Equals(Ship other)
+		{
+			return other == this;
+		}
+
+		public static bool operator ==(Ship first, Ship second)
+		{
+			return first.GetHashCode() == second.GetHashCode();
+		}
+
+		public static bool operator !=(Ship first, Ship second)
+		{
+			return !(first == second);
+		}
+
 	}
 }

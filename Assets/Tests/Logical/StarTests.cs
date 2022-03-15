@@ -1,5 +1,6 @@
 ﻿using NUnit.Framework;
 using System.Collections;
+using System.Collections.Generic;
 
 namespace Homeworlds.Logical.Tests
 {
@@ -63,7 +64,7 @@ namespace Homeworlds.Logical.Tests
 			int[] nonemptySmallRedCounts = new int[4] { 2, 1, 0, 0 };
 			yield return new object[2] { nonemptySmallRedStar, nonemptySmallRedCounts };
 
-			Star nonemptySmallGreenStar = new Star(new Pip(ePipColor.Red, ePipSize.Small));
+			Star nonemptySmallGreenStar = new Star(new Pip(ePipColor.Green, ePipSize.Small));
 			for (int i = 0; i < 2; i++)
 			{
 				nonemptySmallGreenStar.AddShip(new Ship(ePlayer.Player1, new Pip(ePipColor.Green, ePipSize.Small)));
@@ -72,7 +73,7 @@ namespace Homeworlds.Logical.Tests
 
 			nonemptySmallGreenStar.AddShip(new Ship(ePlayer.Player1, new Pip(ePipColor.Blue, ePipSize.Medium)));
 			int[] nonemptySmallGreenCounts = new int[4] { 0, 3, 3, 0 };
-			yield return new object[2] { nonemptySmallRedStar, nonemptySmallRedCounts };
+			yield return new object[2] { nonemptySmallGreenStar, nonemptySmallGreenCounts };
 		}
 
 		[TestCaseSource(nameof(overpopCases))]
