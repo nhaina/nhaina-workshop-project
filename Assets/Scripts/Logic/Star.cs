@@ -14,6 +14,10 @@ namespace Homeworlds.Logic
 			Attributes = i_Attributes;
 		}
 
+		public Star(ePipColor i_StarColor, ePipSize i_StarSize)
+			: this(new Pip(i_StarColor, i_StarSize))
+		{ }
+
 		public IEnumerable<ePipColor> Colors
 		{
 			get
@@ -28,6 +32,26 @@ namespace Homeworlds.Logic
 			{
 				return new ePipSize[] { Attributes.Size };
 			}
+		}
+
+		bool IEquatable<IStar>.Equals(IStar other)
+		{
+			return Equals(other);
+		}
+
+		public override bool Equals(object obj)
+		{
+			return obj is Star other && Attributes.Equals(other.Attributes);
+		}
+
+		public override int GetHashCode()
+		{
+			return Attributes.GetHashCode();
+		}
+
+		public override string ToString()
+		{
+			return $"{Attributes} star";
 		}
 	}
 }

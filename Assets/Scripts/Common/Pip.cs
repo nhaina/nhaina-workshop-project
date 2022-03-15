@@ -25,7 +25,7 @@ namespace Homeworlds.Common
 
 		public override string ToString()
 		{
-			return $"{Size} {Color} pip";
+			return $"{Size} {Color}";
 		}
 
 		public bool Equals(Pip other)

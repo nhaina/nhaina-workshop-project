@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.Generic;
 using Homeworlds.Common;
 
 namespace Homeworlds.Logic
@@ -51,6 +49,11 @@ namespace Homeworlds.Logic
 		public override int GetHashCode()
 		{
 			return 24 * StarIdx + 2 * Attributes.GetHashCode() + (int)Owner;
+		}
+
+		public override string ToString()
+		{
+			return $"({Attributes} ship at {StarIdx}, owned by {Owner})";
 		}
 	}
 }
