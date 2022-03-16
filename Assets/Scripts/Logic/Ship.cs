@@ -3,6 +3,7 @@ using Homeworlds.Common;
 
 namespace Homeworlds.Logic
 {
+	[Serializable]
 	public readonly struct Ship : IEquatable<Ship>
 	{
 		public readonly Pip Attributes;

@@ -2,6 +2,7 @@
 
 namespace Homeworlds.Common
 {
+	[Serializable]
 	public readonly struct Pip : IEquatable<Pip>
 	{
 		public readonly ePipColor Color;

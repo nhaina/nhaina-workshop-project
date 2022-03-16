@@ -17,30 +17,18 @@ namespace Homeworlds.Logic
 			Owner = i_Owner;
 		}
 
-		public IEnumerable<ePipColor> Colors
+		public IEnumerable<Pip> Attributes
 		{
 			get
 			{
-				List<ePipColor> result = new List<ePipColor>(2);
-				result.Add(PrimaryAttributes.Color);
+				Pip[] result;
 				if (SecondaryAttributes.HasValue)
 				{
-					result.Add(SecondaryAttributes.Value.Color);
+					result = new Pip[] { PrimaryAttributes, SecondaryAttributes.Value };
 				}
-
-				return result;
-			}
-		}
-
-		public IEnumerable<ePipSize> Sizes
-		{
-			get
-			{
-				List<ePipSize> result = new List<ePipSize>(2);
-				result.Add(PrimaryAttributes.Size);
-				if (SecondaryAttributes.HasValue)
+				else
 				{
-					result.Add(SecondaryAttributes.Value.Size);
+					result = new Pip[] { PrimaryAttributes };
 				}
 
 				return result;

@@ -116,7 +116,7 @@ namespace Homeworlds.Logic
 				.Where(ship => (ship.StarIdx != i_StarIdx) || (ship.Color != i_ColorToRemove))
 				.ToList();
 			List<IStar> stars = new List<IStar>(i_Original.stars);
-			IEnumerable<ePipColor> starColors = i_Original.stars[i_StarIdx].Colors;
+			IEnumerable<ePipColor> starColors = i_Original.stars[i_StarIdx].Attributes.Select(p=>p.Color);
 			if (starColors.Contains(i_ColorToRemove))
 			{
 				if (starColors.Count() == 1)
@@ -219,8 +219,7 @@ namespace Homeworlds.Logic
 		private Dictionary<Pip, int> toPipMultiset(IEnumerable<IStar> i_Stars)
 		{
 			Dictionary<Pip, int> result = new Dictionary<Pip, int>();
-			var groups = i_Stars.SelectMany(st => st.Colors.Zip(st.Sizes, (c, s) => new Pip(c, s)))
-				.GroupBy(p => p);
+			var groups = i_Stars.SelectMany(st => st.Attributes).GroupBy(p => p);
 			foreach (var group in groups)
 			{
 				result.Add(group.Key, group.Count());
@@ -236,6 +235,15 @@ namespace Homeworlds.Logic
 			return shipsAtts.Intersect(otherShipsAtts).Count() == shipsAtts.Count();
 		}
 
+		public IEnumerable<Ship> Ships { get { return ships?.ToArray(); } }
+		public IEnumerable<IStar> Stars { get { return stars?.ToArray(); } }
 
+		public eBoardLifecycle Status
+		{
+			get
+			{
+				return status;
+			}
+		}
 	}
 }

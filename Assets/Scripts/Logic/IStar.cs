@@ -6,7 +6,6 @@ namespace Homeworlds.Logic
 {
 	public interface IStar : IEquatable<IStar>
 	{
-		IEnumerable<ePipColor> Colors { get; }
-		IEnumerable<ePipSize> Sizes { get; }
+		IEnumerable<Pip> Attributes { get; }
 	}
 }

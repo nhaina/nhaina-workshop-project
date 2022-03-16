@@ -5,6 +5,7 @@ using Homeworlds.Common;
 
 namespace Homeworlds.Logic
 {
+	[Serializable]
 	public readonly struct Star : IStar
 	{
 		public readonly Pip Attributes;
@@ -18,19 +19,11 @@ namespace Homeworlds.Logic
 			: this(new Pip(i_StarColor, i_StarSize))
 		{ }
 
-		public IEnumerable<ePipColor> Colors
+		IEnumerable<Pip> IStar.Attributes
 		{
 			get
 			{
-				return new ePipColor[] { Attributes.Color };
-			}
-		}
-
-		public IEnumerable<ePipSize> Sizes
-		{
-			get
-			{
-				return new ePipSize[] { Attributes.Size };
+				return new Pip[] { Attributes };
 			}
 		}
 
