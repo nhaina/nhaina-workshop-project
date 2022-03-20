@@ -48,8 +48,8 @@ MonoBehaviour:
   model: {fileID: 324558980386765000}
   player1ShipsHangar: {fileID: 2204282355385162786}
   player2ShipsHangar: {fileID: 3204206002865175081}
-  player1HangarOffset: 0.25
-  player2HangarOffset: -0.25
+  player1HangarOffset: 0.125
+  player2HangarOffset: -0.125
 --- !u!1 &4993212921547180080
 GameObject:
   m_ObjectHideFlags: 0
@@ -105,13 +105,13 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5717478817917641544}
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalRotation: {x: 0, y: 0.38268343, z: 0, w: 0.92387956}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 5950032801228308122}
   m_RootOrder: 0
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 45, z: 0}
 --- !u!1 &6494913976902235147
 GameObject:
   m_ObjectHideFlags: 0

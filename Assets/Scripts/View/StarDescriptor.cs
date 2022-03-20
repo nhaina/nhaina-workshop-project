@@ -15,9 +15,14 @@ namespace Homeworlds.View
 		private Transform player1ShipsHangar;
 		[SerializeField]
 		private Transform player2ShipsHangar;
-		private float player1HangarOffset = 0.25f;
-		private float player2HangarOffset = -0.25f;
-		private IStar star;
+		[SerializeField]
+		private float player1HangarOffset = 0.125f;
+		[SerializeField]
+		private float player2HangarOffset = -0.125f;
+		public const float k_HangarsPadding = 0.2f;
+
+		public IStar Star { get; private set; }
+		public ViewBoardPrefabStore Store { get; set; }
 
 		public Transform Model
 		{
@@ -29,23 +34,6 @@ namespace Homeworlds.View
 			set
 			{
 				model = value;
-			}
-		}
-
-		public float GetHangarOffset(ePlayer i_Owner)
-		{
-			return i_Owner == ePlayer.Player1 ? player1HangarOffset : player2HangarOffset;
-		}
-
-		public void SetHangarOffset(ePlayer i_Owner, float i_NewOffset)
-		{
-			if (i_Owner == ePlayer.Player1)
-			{
-				player1HangarOffset = i_NewOffset;
-			}
-			else
-			{
-				player2HangarOffset = i_NewOffset;
 			}
 		}
 
@@ -75,28 +63,45 @@ namespace Homeworlds.View
 			}
 		}
 
-		public ViewBoardPrefabStore Store { get; set; }
+		public float Width { get { return player1HangarOffset - player2HangarOffset + k_HangarsPadding; } }
+		public float Offset { get { return 0.5f * k_HangarsPadding - player2HangarOffset; } }
+
+		public float GetHangarOffset(ePlayer i_Owner)
+		{
+			return i_Owner == ePlayer.Player1 ? player1HangarOffset : player2HangarOffset;
+		}
+
+		public void SetHangarOffset(ePlayer i_Owner, float i_NewOffset)
+		{
+			if (i_Owner == ePlayer.Player1)
+			{
+				player1HangarOffset = i_NewOffset;
+			}
+			else
+			{
+				player2HangarOffset = i_NewOffset;
+			}
+		}
 
 		public void Initialize(IStar i_Star)
 		{
-			star = i_Star;
+			Star = i_Star;
 			createModel(i_Star);
 		}
-
-		public IEnumerable<ePipSize> Sizes { get { return star.Attributes.Select(p => p.Size); } }
 
 		private void createModel(IStar i_Star)
 		{
 			Vector3 offset = Vector3.zero;
 			foreach (Pip pip in i_Star.Attributes.OrderByDescending(p => p.Size))
 			{
-				GameObject go = Instantiate(Store.FromPipSize(pip.Size), offset, Quaternion.identity, model.transform);
+				GameObject go = Instantiate(Store.FromPipSize(pip.Size), model.transform);
+				go.transform.localPosition = offset;
 				go.GetComponentInChildren<Renderer>().material = Store.FromPipColor(pip.Color);
-				offset += offsetFromSize(pip.Size);
+				offset += yOffsetFromSize(pip.Size);
 			}
 		}
 
-		private Vector3 offsetFromSize(ePipSize size)
+		private Vector3 yOffsetFromSize(ePipSize size)
 		{
 			float y = 0;
 			switch (size)

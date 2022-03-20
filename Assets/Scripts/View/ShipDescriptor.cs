@@ -7,18 +7,19 @@ namespace Homeworlds.View
 {
 	public class ShipDescriptor : MonoBehaviour
 	{
-		public const float LargeHangarOffset = 0.6f;
-		public const float MediumHangarOffset = 0.45f;
-		public const float SmallHangarOffset = 0.35f;
+		public float LargeHangarOffset = 0.45f;
+		public float MediumHangarOffset = 0.35f;
+		public float SmallHangarOffset = 0.25f;
 		[SerializeField]
 		private Transform model;
+		private Ship ship;
 
 		public void Initialize(Ship i_Ship, StarDescriptor i_Location)
 		{
+			ship = i_Ship;
 			Transform hangar;
-			float yaw = 90;
-			float hangarOffset = i_Location.GetHangarOffset(i_Ship.Owner);
-			if (i_Ship.Owner == Common.ePlayer.Player1)
+			float yaw = 90, hangarOffset = i_Location.GetHangarOffset(i_Ship.Owner);
+			if (ship.Owner == ePlayer.Player1)
 			{
 				hangar = i_Location.Player1ShipsHangar;
 			}
@@ -39,14 +40,13 @@ namespace Homeworlds.View
 
 		private Vector3 calcPosition(float hangarOffset, ePipSize size)
 		{
-			float z = -0.05f * (1 + (int)size);
-			return new Vector3(hangarOffset, 0, z);
+			return new Vector3(calcHangarOffset(hangarOffset, size), 0, 0);
 		}
 
 		private float calcHangarOffset(float hangarOffset, ePipSize size)
 		{
 			float sign = Mathf.Sign(hangarOffset);
-			float offset = SmallHangarOffset;
+			float offset;
 			switch (size)
 			{
 				case ePipSize.Medium:

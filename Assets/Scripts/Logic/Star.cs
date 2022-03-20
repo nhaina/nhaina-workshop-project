@@ -6,13 +6,21 @@ using Homeworlds.Common;
 namespace Homeworlds.Logic
 {
 	[Serializable]
-	public readonly struct Star : IStar
+	public readonly struct Star : IStar, IEquatable<Star>
 	{
+		public interface IConcreteStarVisitor
+		{
+			void Visit(Star star);
+		}
+
+		private readonly int id;
+		private static int s_IdGenerator = 0;
 		public readonly Pip Attributes;
 
 		public Star(Pip i_Attributes)
 		{
 			Attributes = i_Attributes;
+			id = s_IdGenerator++;
 		}
 
 		public Star(ePipColor i_StarColor, ePipSize i_StarSize)
@@ -27,14 +35,21 @@ namespace Homeworlds.Logic
 			}
 		}
 
+		public int Identifier { get { return id; } }
+
 		bool IEquatable<IStar>.Equals(IStar other)
 		{
 			return Equals(other);
 		}
 
+		public bool Equals(Star other)
+		{
+			return Attributes.Equals(other.Attributes);
+		}
+
 		public override bool Equals(object obj)
 		{
-			return obj is Star other && Attributes.Equals(other.Attributes);
+			return obj is Star other && Equals(other);
 		}
 
 		public override int GetHashCode()
@@ -45,6 +60,18 @@ namespace Homeworlds.Logic
 		public override string ToString()
 		{
 			return $"{Attributes} star";
+		}
+
+		public void Accept(IAbstractStarVisitor visitor)
+		{
+			if (visitor is IConcreteStarVisitor starVisitor)
+			{
+				starVisitor.Visit(this);
+			}
+			else
+			{
+				visitor.Visit();
+			}
 		}
 	}
 }

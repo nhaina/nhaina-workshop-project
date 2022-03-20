@@ -9,12 +9,36 @@ namespace Homeworlds.Logic
 		public readonly Pip PrimaryAttributes;
 		public readonly Pip? SecondaryAttributes;
 		public readonly ePlayer Owner;
+		public readonly bool Destroyed;
 
-		public Homeworld(Pip i_PrimaryAttributes, Pip? i_SecondaryAttributes, ePlayer i_Owner)
+		public static readonly Homeworld Empty;
+
+		public interface IHomeWorldVisitor : IAbstractStarVisitor
 		{
+			void Visit(Homeworld homeworld);
+		}
+
+		public Homeworld(ePipColor i_PrimaryColor, ePipSize i_PrimarySize, ePipColor i_SecColor, ePipSize i_SecSize,
+			ePlayer i_Owner, bool i_Destroyed)
+			: this(new Pip(i_PrimaryColor, i_PrimarySize), new Pip(i_SecColor, i_SecSize), i_Owner, i_Destroyed)
+		{ }
+
+		public Homeworld(ePipColor i_PrimaryColor, ePipSize i_PrimarySize, ePlayer i_Owner, bool i_Destroyed)
+			: this(new Pip(i_PrimaryColor, i_PrimarySize), null, i_Owner, i_Destroyed)
+		{ }
+
+		public Homeworld(Pip i_PrimaryAttributes, Pip? i_SecondaryAttributes, ePlayer i_Owner, bool i_Destroyed)
+		{
+			if (i_SecondaryAttributes.HasValue && i_SecondaryAttributes.Value.Size >= i_PrimaryAttributes.Size)
+			{
+				Pip tmp = i_SecondaryAttributes.Value;
+				i_SecondaryAttributes = i_PrimaryAttributes;
+				i_PrimaryAttributes = tmp;
+			}
 			PrimaryAttributes = i_PrimaryAttributes;
 			SecondaryAttributes = i_SecondaryAttributes;
 			Owner = i_Owner;
+			Destroyed = i_Destroyed;
 		}
 
 		public IEnumerable<Pip> Attributes
@@ -35,6 +59,8 @@ namespace Homeworlds.Logic
 			}
 		}
 
+		public int Identifier { get { return (int)Owner; } }
+
 		public bool Equals(Homeworld other)
 		{
 			return GetHashCode().Equals(other.GetHashCode());
@@ -42,7 +68,7 @@ namespace Homeworlds.Logic
 
 		public override bool Equals(object obj)
 		{
-			return obj is IStar other && Equals(other);
+			return obj is IStar other && ((IEquatable<IStar>)this).Equals(other);
 		}
 
 		public override int GetHashCode()
@@ -53,9 +79,15 @@ namespace Homeworlds.Logic
 			return atHash * 2 + (int)Owner;
 		}
 
+		public override string ToString()
+		{
+			string secAttributesRepr = SecondaryAttributes.HasValue ? $"-{SecondaryAttributes.Value}" : string.Empty;
+			return $"{(Destroyed? "Destroyed " : string.Empty)} {PrimaryAttributes}{secAttributesRepr} homeworld, owned by {Owner}";
+		}
+
 		public static bool operator ==(Homeworld i_First, Homeworld i_Second)
 		{
-			return i_First.Equals(i_Second);
+			return i_First.GetHashCode() == i_Second.GetHashCode() && i_First.Equals(i_Second);
 		}
 
 		public static bool operator !=(Homeworld i_First, Homeworld i_Second)
@@ -66,6 +98,24 @@ namespace Homeworlds.Logic
 		bool IEquatable<IStar>.Equals(IStar other)
 		{
 			return other is Homeworld homeWorld && Equals(homeWorld);
+		}
+
+		public static Homeworld MarkAsDestroyed(Homeworld i_Original)
+		{
+			return new Homeworld(i_Original.PrimaryAttributes, i_Original.SecondaryAttributes,
+				i_Original.Owner, true);
+		}
+
+		public void Accept(IAbstractStarVisitor visitor)
+		{
+			if (visitor is IHomeWorldVisitor homeWorldVisitor)
+			{
+				homeWorldVisitor.Visit(this);
+			}
+			else
+			{
+				visitor.Visit();
+			}
 		}
 	}
 }
