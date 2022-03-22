@@ -7,8 +7,8 @@ using UnityEngine;
 
 namespace Homeworlds.Logic
 {
-    public class BoardManager
-    {
+	public class BoardManager
+	{
 		private readonly Dictionary<Pip, int> bank;
 		private BoardState currentState;
 		private Pip? sacrifiedPip;

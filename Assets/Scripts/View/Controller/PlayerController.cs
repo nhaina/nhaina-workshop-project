@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 namespace Homeworlds.View
 {
@@ -10,11 +11,12 @@ namespace Homeworlds.View
 		[SerializeField]
 		private Camera playerCamera;
 		public Camera PlayerCamera { get { return playerCamera; } set { playerCamera = value; } }
+		public event Action<Vector2, CancellationRequest> ClickedOutsideUI;
 
 		private void Awake()
 		{
 			playerCamera = playerCamera ? playerCamera : Camera.main;
-			
+
 		}
 
 		private void Update()
@@ -35,10 +37,17 @@ namespace Homeworlds.View
 
 		private void TestMouse()
 		{
-			if (Input.GetMouseButtonDown(0))
+			if (!EventSystem.current.IsPointerOverGameObject() && Input.GetMouseButtonDown(0))
 			{
 				CastTouchRay(Input.mousePosition, 0.5f);
 			}
+		}
+
+		protected bool OnClickedOutsideUI(Vector2 i_ScreenPositionClicked)
+		{
+			CancellationRequest request = new CancellationRequest();
+			ClickedOutsideUI?.Invoke(i_ScreenPositionClicked, request);
+			return request.RequestCancel;
 		}
 
 		private void TestTouch()
@@ -52,7 +61,7 @@ namespace Homeworlds.View
 					Touch touch = Input.GetTouch(i);
 					if (touch.phase == TouchPhase.Began)
 					{
-						touchHandled = CastTouchRay(touch.position, touch.radius);
+						touchHandled = EventSystem.current.IsPointerOverGameObject() || CastTouchRay(touch.position, touch.radius); 
 					}
 				}
 			}
@@ -60,8 +69,9 @@ namespace Homeworlds.View
 
 		private bool CastTouchRay(Vector2 i_TouchPosition, float i_TouchRadius)
 		{
-			bool handled = false;
-			if (Physics.SphereCast(playerCamera.ScreenPointToRay(i_TouchPosition), i_TouchRadius, out RaycastHit hit, 20	))
+			bool handled = OnClickedOutsideUI(i_TouchPosition);
+
+			if (Physics.SphereCast(playerCamera.ScreenPointToRay(i_TouchPosition), i_TouchRadius, out RaycastHit hit, 20))
 			{
 				ISelectable selectable = hit.transform.GetComponentInParent<ISelectable>();
 				if (selectable != null)
