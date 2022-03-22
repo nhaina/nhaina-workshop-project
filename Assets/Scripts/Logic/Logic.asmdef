@@ -1,0 +1,15 @@
+{
+    "name": "Logic",
+    "references": [
+        "GUID:a8a45daaf3256fd479cc74e51d0ce20c"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
