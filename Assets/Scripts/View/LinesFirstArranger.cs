@@ -1,5 +1,6 @@
 ﻿using Homeworlds.Common;
 using Homeworlds.Logic;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,47 +11,69 @@ namespace Homeworlds.View
 {
 	public class LinesFirstArranger : IStarArranger
 	{
-		public float MinRowHeight { get; set; }
+		public float RowHeight { get; set; }
+		public float StarPadding { get; set; }
+
+		private Vector3 nextPosition;
+		private Vector3 rowStart;
+		private float maxRowWidth;
+		private int rowsCount;
 
 		public void ArrangeStars(Rect i_Bounds, IEnumerable<StarDescriptor> i_StarsToArrange)
 		{
-			var starGroups = i_StarsToArrange.OrderByDescending(sd => sd.Width).
-				GroupBy(sd => ((Star)sd.Star).Attributes.Size);
-
-			float rowHeight = i_Bounds.height / (2f * starGroups.Count() + 1);
-			rowHeight = Mathf.Max(MinRowHeight, rowHeight);
-
-			Rect bounds = shrinkBoundsVerticaly(i_Bounds, rowHeight, 1);
-
-			foreach (var group in starGroups)
-			{
-				bounds = arrangeGroup(bounds, rowHeight, group);
-			}
+			rowStart = new Vector3(i_Bounds.x, 0, i_Bounds.y);
+			nextPosition = rowStart;
+			arrangeByLines(i_StarsToArrange, i_Bounds.width, arrangeRow);
 		}
 
-		private Rect arrangeGroup(Rect i_Bounds, float rowHeight, IEnumerable<StarDescriptor> i_Group)
+		private void arrangeRow(IEnumerable<StarDescriptor> row)
 		{
-			float x = i_Bounds.x;
-			int row = 0;
-			foreach (var item in i_Group)
+			foreach (StarDescriptor sd in row)
 			{
-				x += item.Offset;
-				item.gameObject.SetActive(true);
-				item.transform.localPosition = new Vector3(x, 0, i_Bounds.y + row * rowHeight);
-				x += item.Width;
-				if (x+item.Width > i_Bounds.xMax)
+				sd.transform.localPosition = new Vector3(sd.Offset, 0, 0) + nextPosition;
+				nextPosition += new Vector3(sd.Width + sd.Offset + StarPadding, 0, 0);
+			}
+
+			nextPosition = new Vector3(rowStart.x, 0, nextPosition.z + RowHeight);
+		}
+
+
+		private void arrangeByLines(IEnumerable<StarDescriptor> children, float maxWidth, Action<IEnumerable<StarDescriptor>> layRowAction)
+		{
+			float rowWidth = 0;
+			LinkedList<StarDescriptor> row = new LinkedList<StarDescriptor>();
+
+			foreach (StarDescriptor starDescriptor in children)
+			{
+				float totalElementWidth = starDescriptor.Offset + starDescriptor.Width;
+				if (rowWidth + totalElementWidth > maxWidth)
 				{
-					x = i_Bounds.x;
-					row++;
+					layRowAction(row);
+					row.Clear();
+					rowWidth = 0;
 				}
+				row.AddLast(starDescriptor);
+				rowWidth += totalElementWidth;
 			}
-
-			return shrinkBoundsVerticaly(i_Bounds, rowHeight, row++);
+			if (row.Count > 0)
+			{
+				layRowAction(row);
+			}
 		}
 
-		private static Rect shrinkBoundsVerticaly(Rect i_Bounds, float i_RowHeight, int i_RowsToSkip)
+		public Vector2 CalculateBounds(Rect i_Bounds, IEnumerable<StarDescriptor> i_StarsToArrange)
 		{
-			return new Rect(i_Bounds.x, i_Bounds.y + i_RowsToSkip * i_RowHeight, i_Bounds.width, i_Bounds.height - i_RowsToSkip * i_RowHeight);
+			rowsCount = 0;
+			maxRowWidth = 0;
+			arrangeByLines(i_StarsToArrange, i_Bounds.width, getRowBounds);
+
+			return 0.05f * Vector2.one + new Vector2(maxRowWidth, rowsCount * RowHeight);
+		}
+
+		private void getRowBounds(IEnumerable<StarDescriptor> row)
+		{
+			rowsCount++;
+			maxRowWidth = Mathf.Max(maxRowWidth, row.Sum(sd => sd.Width + sd.Offset + StarPadding));
 		}
 	}
 }

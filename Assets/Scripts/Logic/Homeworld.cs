@@ -63,12 +63,16 @@ namespace Homeworlds.Logic
 
 		public bool Equals(Homeworld other)
 		{
-			return GetHashCode().Equals(other.GetHashCode());
+			return PrimaryAttributes.Equals(other.PrimaryAttributes) &&
+				SecondaryAttributes.HasValue &&
+				other.SecondaryAttributes.HasValue &&
+				SecondaryAttributes.Value.Equals(other.SecondaryAttributes) &&
+				Owner.Equals(other.Owner);
 		}
 
 		public override bool Equals(object obj)
 		{
-			return obj is IStar other && ((IEquatable<IStar>)this).Equals(other);
+			return obj is Homeworld other && Equals(other);
 		}
 
 		public override int GetHashCode()
@@ -82,22 +86,22 @@ namespace Homeworlds.Logic
 		public override string ToString()
 		{
 			string secAttributesRepr = SecondaryAttributes.HasValue ? $"-{SecondaryAttributes.Value}" : string.Empty;
-			return $"{(Destroyed? "Destroyed " : string.Empty)} {PrimaryAttributes}{secAttributesRepr} homeworld, owned by {Owner}";
+			return $"{(Destroyed ? "Destroyed " : string.Empty)} {PrimaryAttributes}{secAttributesRepr} homeworld, owned by {Owner}";
 		}
 
 		public static bool operator ==(Homeworld i_First, Homeworld i_Second)
 		{
-			return i_First.GetHashCode() == i_Second.GetHashCode() && i_First.Equals(i_Second);
+			return i_First.Equals(i_Second);
 		}
 
 		public static bool operator !=(Homeworld i_First, Homeworld i_Second)
 		{
-			return !(i_First.Equals(i_Second));
+			return !(i_First == i_Second);
 		}
 
 		bool IEquatable<IStar>.Equals(IStar other)
 		{
-			return other is Homeworld homeWorld && Equals(homeWorld);
+			return Equals(other);
 		}
 
 		public static Homeworld MarkAsDestroyed(Homeworld i_Original)

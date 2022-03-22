@@ -34,12 +34,12 @@ namespace Homeworlds.Logic
 
 		public static bool operator ==(Ship i_First, Ship i_Second)
 		{
-			return i_First.GetHashCode() == i_Second.GetHashCode() && i_First.Equals(i_Second);
+			return i_First.Equals(i_Second);
 		}
 
 		public static bool operator !=(Ship i_First, Ship i_Second)
 		{
-			return !(i_First.Equals(i_Second));
+			return !(i_First == i_Second);
 		}
 
 		public override bool Equals(object obj)

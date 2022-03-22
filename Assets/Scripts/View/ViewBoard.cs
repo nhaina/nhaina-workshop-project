@@ -10,17 +10,17 @@ namespace Homeworlds.View
 {
 	public class ViewBoard : MonoBehaviour
 	{
-		public BoardState current;
+		private BoardState current;
 		[SerializeField]
 		private ViewBoardPrefabStore store;
 		[SerializeField]
 		private BankDescriptor bank;
 		[SerializeField]
 		private Rect gameField;
-		public float arrangerMinRowHeight = 0.7f;
+		public float arrangerMinRowHeight = 1.4f;
 		public IStarArranger StarArranger { get; set; }
-		List<StarDescriptor> regularStars = new List<StarDescriptor>();
-		List<ShipDescriptor> ships = new List<ShipDescriptor>();
+		private readonly List<StarDescriptor> regularStars = new List<StarDescriptor>();
+		private readonly List<ShipDescriptor> ships = new List<ShipDescriptor>();
 		StarDescriptor player1HomeworldDesc, player2HomeworldDesc;
 
 		private void OnDrawGizmos()
@@ -36,11 +36,30 @@ namespace Homeworlds.View
 
 		private void Awake()
 		{
-			StarArranger = StarArranger ?? new LinesFirstArranger() { MinRowHeight = arrangerMinRowHeight };
-			UpdateField(createRandom());
+			StarArranger = StarArranger ?? new LinesFirstArranger() { RowHeight = arrangerMinRowHeight };
 		}
 
-		// TODO: Remove this
+		#region TODO: Refactor this
+
+		public void ShowBoard(bool randomOrStart)
+		{
+			BoardState old = current;
+			BoardState created = createStart();
+			try
+			{
+				if (randomOrStart)
+				{
+					created = createRandom();
+				}
+			}
+			catch (Exception e)
+			{
+				Debug.LogWarning($"createRandom failed with {e.Message}");
+			}
+			UpdateField(created);
+			current = old;
+		}
+
 		private BoardState createRandom()
 		{
 			Dictionary<Pip, int> available = new Dictionary<Pip, int>();
@@ -56,8 +75,8 @@ namespace Homeworlds.View
 			byte[] randomBytes = new byte[256];
 			int bytesIdx = 0;
 			rnd.NextBytes(randomBytes);
-			Star[] stars = new Star[2 + randomBytes[bytesIdx++] % 11];
-			Ship[] ships = new Ship[4 + randomBytes[bytesIdx++] % 11 + stars.Length];
+			Star[] stars = new Star[2 + randomBytes[bytesIdx++] % 10];
+			Ship[] ships = new Ship[4 + randomBytes[bytesIdx++] % 10 + stars.Length];
 
 			Homeworld p1 = new Homeworld(randomPip(available, randomBytes, bytesIdx++), randomPip(available, randomBytes, bytesIdx++), ePlayer.Player1, false);
 			Homeworld p2 = new Homeworld(randomPip(available, randomBytes, bytesIdx++), randomPip(available, randomBytes, bytesIdx++), ePlayer.Player2, false);
@@ -66,27 +85,30 @@ namespace Homeworlds.View
 				stars[i] = new Star(randomPip(available, randomBytes, bytesIdx++));
 				ships[i] = new Ship(randomPip(available, randomBytes, bytesIdx++), (ePlayer)(randomBytes[bytesIdx] & 1), stars[i]);
 			}
-			Debug.Log(string.Join("--", stars.Select(s => s.Attributes.ToString())));
 			for (int i = stars.Length; i < ships.Length; i++)
 			{
 				int locationIdx = randomBytes[bytesIdx++] % (stars.Length + 2);
 				IStar location = locationIdx == 0 ? p1 : locationIdx == 1 ? (IStar)p2 : stars[locationIdx - 2];
 				ships[i] = new Ship(randomPip(available, randomBytes, bytesIdx++), (ePlayer)(randomBytes[bytesIdx] & 1), location);
 			}
-			Debug.Log(string.Join("--", ships.Select(s => s.Attributes.ToString())));
 			return new BoardState(ships, stars, eBoardLifecycle.Ongoing, p1, p2);
 		}
 
+		private Pip lastCreated;
 		private Pip randomPip(Dictionary<Pip, int> available, byte[] bytes, int bytesIdx)
 		{
 			Pip[] pips = available.Keys.ToArray();
 			Pip selection = pips[bytes[bytesIdx] % pips.Length];
+			if (selection.Color == lastCreated.Color || selection.Size == lastCreated.Size)
+			{
+				selection = pips[bytes[bytes[bytesIdx]] % pips.Length];
+			}
 			if (--available[selection] <= 0)
 			{
 				available.Remove(selection);
-				Debug.Log($"Removed {selection}");
 			}
 
+			lastCreated = selection;
 			return selection;
 		}
 
@@ -99,12 +121,13 @@ namespace Homeworlds.View
 			return BoardState.CreateInitial(p1, p1ship, p2, p2ship);
 		}
 
+		#endregion
+
 		public void UpdateField(BoardState newState)
 		{
 			destroyChildren();
 
 			current = newState;
-			Debug.Log($"Field contains {2 + newState.StarsCount} stars, and {newState.ShipsCount} ships");
 			player1HomeworldDesc = createStarDescriptor(newState.Player1Homeworld);
 			player2HomeworldDesc = createStarDescriptor(newState.Player2Homeworld);
 			foreach (Star star in newState.Stars)
@@ -114,7 +137,7 @@ namespace Homeworlds.View
 
 			foreach (Ship ship in newState.Ships)
 			{
-				GameObject go = Instantiate(store.shipPrefab, Vector3.zero, Quaternion.identity, transform);
+				GameObject go = Instantiate(store.ShipPrefab, Vector3.zero, Quaternion.identity, transform);
 				ShipDescriptor shipDesc = go.GetComponent<ShipDescriptor>();
 				shipDesc.Store = store;
 				shipDesc.Initialize(ship, findStarDescriptor(ship.Location));
@@ -122,6 +145,7 @@ namespace Homeworlds.View
 			}
 
 			arrangeStars();
+
 			bank.UpdateState(current);
 		}
 
@@ -130,13 +154,47 @@ namespace Homeworlds.View
 			Vector3 center = new Vector3(gameField.center.x, 0, gameField.center.y);
 			player1HomeworldDesc.transform.position = transform.position + new Vector3(center.x, center.y, gameField.yMin);
 			player2HomeworldDesc.transform.position = transform.position + new Vector3(center.x, center.y, gameField.yMax);
-			Rect starsRect = new Rect(gameField.x, gameField.y + 0.7f, gameField.width, gameField.height - 0.7f);
-			StarArranger.ArrangeStars(starsRect, regularStars);
+			Rect starsRect = new Rect(gameField.x, gameField.y + arrangerMinRowHeight, gameField.width, gameField.height - arrangerMinRowHeight);
+			IEnumerable<ePipSize> allSizes = (ePipSize[])Enum.GetValues(typeof(ePipSize));
+			IEnumerable<ePipSize> from = allSizes.Except(player1HomeworldDesc.Star.Attributes.Select(p => p.Size));
+			IEnumerable<ePipSize> to = allSizes.Except(player2HomeworldDesc.Star.Attributes.Select(p => p.Size));
+
+			Dictionary<ePipSize, IEnumerable<StarDescriptor>> starGroups = regularStars
+				.GroupBy(sd => ((Star)sd.Star).Attributes.Size)
+				.ToDictionary(grp => grp.Key, grp => (IEnumerable<StarDescriptor>)grp);
+
+			IEnumerable<StarDescriptor> groupToArrange;
+			if (!from.SequenceEqual(to) && from.Count() + to.Count() < 3)
+			{
+				ePipSize fromSingle = from.Single();
+				ePipSize toSingle = to.Single();
+				if (starGroups.TryGetValue(fromSingle, out groupToArrange))
+				{
+					Vector2 fromSize = StarArranger.CalculateBounds(starsRect, groupToArrange);
+					StarArranger.ArrangeStars(new Rect(starsRect.center.x - 0.5f * fromSize.x, starsRect.y, fromSize.x, fromSize.y), groupToArrange);
+					starsRect.y += fromSize.y;
+					starsRect.height -= fromSize.y;
+					starGroups.Remove(fromSingle);
+				}
+				if (starGroups.TryGetValue(toSingle, out groupToArrange))
+				{
+					Vector2 toSize = StarArranger.CalculateBounds(starsRect, groupToArrange);
+					StarArranger.ArrangeStars(new Rect(starsRect.center.x - 0.5f * toSize.x, starsRect.yMax - toSize.y, toSize.x, toSize.y), groupToArrange);
+					starsRect.height -= toSize.y;
+					starGroups.Remove(toSingle);
+				}
+			}
+			if (starGroups.Count > 0)
+			{
+				groupToArrange = starGroups.Values.Aggregate((a, b) => a.Concat(b));
+				Vector2 remainderSize = StarArranger.CalculateBounds(starsRect, groupToArrange);
+				StarArranger.ArrangeStars(new Rect(starsRect.center - 0.5f * remainderSize, remainderSize), groupToArrange);
+			}
 		}
 
 		private StarDescriptor createStarDescriptor(IStar star)
 		{
-			GameObject go = Instantiate(store.starPrefab, Vector3.zero, Quaternion.identity, transform);
+			GameObject go = Instantiate(store.StarPrefab, Vector3.zero, Quaternion.identity, transform);
 			StarDescriptor starDesc = go.GetComponent<StarDescriptor>();
 			starDesc.Store = store;
 			starDesc.Initialize(star);

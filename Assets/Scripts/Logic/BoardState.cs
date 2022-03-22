@@ -6,7 +6,7 @@ using Homeworlds.Common;
 
 namespace Homeworlds.Logic
 {
-	public class BoardState : IEquatable<BoardState>, ICloneable
+	public sealed class BoardState : IEquatable<BoardState>, ICloneable
 	{
 		private readonly List<Ship> ships;
 		private readonly List<Star> stars;
@@ -80,7 +80,7 @@ namespace Homeworlds.Logic
 
 		public static bool operator ==(BoardState first, BoardState second)
 		{
-			return first.GetHashCode() == second.GetHashCode() && first.Equals(second);
+			return first.Equals(second);
 		}
 
 		public static bool operator !=(BoardState first, BoardState second)
@@ -139,6 +139,27 @@ namespace Homeworlds.Logic
 			return newState;
 		}
 
+		// TODO: Add Tests
+		public static BoardState UpdateShip(BoardState i_Original, Ship i_OriginalShip, Ship i_UpdatedShip)
+		{
+			if (!i_Original.IsKnownStar(i_OriginalShip.Location) || !i_Original.IsKnownStar(i_UpdatedShip.Location))
+			{
+				throw new ArgumentOutOfRangeException("Attempt to update ship from or to an invalid star!");
+			}
+
+			BoardState newState = i_Original.Clone();
+			int shipIndex = newState.ships.FindIndex(ship => ship.Equals(i_OriginalShip));
+			newState.ships[shipIndex] = i_UpdatedShip;
+
+			if (!i_OriginalShip.Location.Equals(i_UpdatedShip.Location))
+			{
+				tryRemoveStar(i_OriginalShip.Location, newState);
+			}
+
+			return newState;
+		}
+
+
 		public static BoardState AddStar(BoardState i_Original, Star i_StarToAdd)
 		{
 			BoardState newState = i_Original.Clone();
@@ -163,17 +184,21 @@ namespace Homeworlds.Logic
 
 			BoardState newState = i_Original.Clone();
 			newState.ships.Remove(i_ToRemove);
-			if (i_ToRemove.Location is Star star && newState.ships.All(s => s.Location != i_ToRemove.Location))
-			{
-				newState.stars.Remove(star);
-			}
+			tryRemoveStar(i_ToRemove.Location, newState);
 
 			return newState;
 		}
 
+		private static void tryRemoveStar(IStar i_Star, BoardState newState)
+		{
+			if (i_Star is Star star && newState.ships.All(s => !s.Location.Equals(i_Star)))
+			{
+				newState.stars.Remove(star);
+			}
+		}
+
 		public static BoardState RemoveColorFromStar(BoardState i_Original, IStar i_ToEdit, ePipColor i_ColorToRemove)
 		{
-
 			if (!i_Original.IsKnownStar(i_ToEdit))
 			{
 				throw new ArgumentOutOfRangeException("Attempt to remove an unknown star!");

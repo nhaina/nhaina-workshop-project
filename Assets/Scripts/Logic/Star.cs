@@ -5,7 +5,6 @@ using Homeworlds.Common;
 
 namespace Homeworlds.Logic
 {
-	[Serializable]
 	public readonly struct Star : IStar, IEquatable<Star>
 	{
 		public interface IConcreteStarVisitor
@@ -44,7 +43,7 @@ namespace Homeworlds.Logic
 
 		public bool Equals(Star other)
 		{
-			return Attributes.Equals(other.Attributes);
+			return Identifier.Equals(other.Identifier);
 		}
 
 		public override bool Equals(object obj)
@@ -55,6 +54,16 @@ namespace Homeworlds.Logic
 		public override int GetHashCode()
 		{
 			return Attributes.GetHashCode();
+		}
+
+		public static bool operator==(Star first, Star second)
+		{
+			return first.Equals(second);
+		}
+
+		public static bool operator !=(Star first, Star second)
+		{
+			return !(first == second);
 		}
 
 		public override string ToString()

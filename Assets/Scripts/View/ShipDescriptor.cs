@@ -5,14 +5,16 @@ using UnityEngine;
 
 namespace Homeworlds.View
 {
-	public class ShipDescriptor : MonoBehaviour
+	public class ShipDescriptor : MonoBehaviour, ISelectable
 	{
-		public float LargeHangarOffset = 0.45f;
+		public float LargeHangarOffset = 0.75f;
 		public float MediumHangarOffset = 0.35f;
 		public float SmallHangarOffset = 0.25f;
 		[SerializeField]
 		private Transform model;
 		private Ship ship;
+
+		public event Action<ISelectable> Selected;
 
 		public void Initialize(Ship i_Ship, StarDescriptor i_Location)
 		{
@@ -63,5 +65,16 @@ namespace Homeworlds.View
 		}
 
 		public ViewBoardPrefabStore Store { get; set; }
+
+		public void Select()
+		{
+			OnSelected();
+		}
+
+		protected virtual void OnSelected()
+		{
+			Selected?.Invoke(this);
+			Debug.Log($"Ship! {string.Join(",", ship.Attributes)}");
+		}
 	}
 }

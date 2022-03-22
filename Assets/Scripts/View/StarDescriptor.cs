@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace Homeworlds.View
 {
-	public class StarDescriptor : MonoBehaviour
+	public class StarDescriptor : MonoBehaviour, ISelectable
 	{
 		[SerializeField]
 		private Transform model;
@@ -16,10 +16,13 @@ namespace Homeworlds.View
 		[SerializeField]
 		private Transform player2ShipsHangar;
 		[SerializeField]
-		private float player1HangarOffset = 0.125f;
+		private float player1HangarOffset;
 		[SerializeField]
-		private float player2HangarOffset = -0.125f;
+		private float player2HangarOffset;
 		public const float k_HangarsPadding = 0.2f;
+		public const float k_StarPadding = 0.2f;
+
+		public event Action<ISelectable> Selected;
 
 		public IStar Star { get; private set; }
 		public ViewBoardPrefabStore Store { get; set; }
@@ -91,32 +94,25 @@ namespace Homeworlds.View
 
 		private void createModel(IStar i_Star)
 		{
-			Vector3 offset = Vector3.zero;
+			float offset = 0.0f;
 			foreach (Pip pip in i_Star.Attributes.OrderByDescending(p => p.Size))
 			{
 				GameObject go = Instantiate(Store.FromPipSize(pip.Size), model.transform);
-				go.transform.localPosition = offset;
+				go.transform.localPosition = new Vector3(0, offset, 0);
 				go.GetComponentInChildren<Renderer>().material = Store.FromPipColor(pip.Color);
-				offset += yOffsetFromSize(pip.Size);
+				offset += Constants.VerticalOffsetFromSize(pip.Size);
 			}
 		}
 
-		private Vector3 yOffsetFromSize(ePipSize size)
+		public void Select()
 		{
-			float y = 0;
-			switch (size)
-			{
-				case ePipSize.Small:
-					y = 0.08f;
-					break;
-				case ePipSize.Medium:
-					y = 0.2f;
-					break;
-				case ePipSize.Large:
-					y = 0.3f;
-					break;
-			}
-			return new Vector3(0, y, 0);
+			OnSelected();
+		}
+
+		protected virtual void OnSelected()
+		{
+			Selected?.Invoke(this);
+			Debug.Log($"Star! {string.Join(",", Star.Attributes)}");
 		}
 	}
 }
