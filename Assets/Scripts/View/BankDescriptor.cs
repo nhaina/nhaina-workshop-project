@@ -67,20 +67,10 @@ namespace Homeworlds.View
 			Gizmos.DrawWireCube(center, size);
 		}
 
-		public void UpdateState(BoardState i_NewState)
+		public void UpdateState(Dictionary<Pip, int> newState)
 		{
 			destroyChildren();
-
-			List<IStar> starsAndHw = new List<IStar>(i_NewState.Stars.Cast<IStar>())
-			{
-				i_NewState.Player1Homeworld,
-				i_NewState.Player2Homeworld
-			};
-
-			Dictionary<Pip, int> pipsOnBoard = multisetUnion(
-				BoardState.toMultiset(i_NewState.Ships.Select(s => s.Attributes)),
-				BoardState.toMultiset(starsAndHw.SelectMany(star => star.Attributes))
-			);
+			Dictionary<Pip, int> pipsOnBoard = newState;
 
 			ePipColor[] colorValues = (ePipColor[])Enum.GetValues(typeof(ePipColor));
 			ePipSize[] sizeValues = (ePipSize[])Enum.GetValues(typeof(ePipSize));
@@ -104,48 +94,8 @@ namespace Homeworlds.View
 				GameObject pipObject = Instantiate(Store.FromPipSize(i_PipSize), pipsContainer);
 				pipObject.GetComponentInChildren<Renderer>().material = Store.FromPipColor(i_PipColor);
 				pipObject.transform.localPosition = new Vector3(cell.x, y, cell.y);
-				y += yOffsetFromSize(i_PipSize);
+				y += Constants.VerticalOffsetFromSize(i_PipSize);
 			}
-		}
-
-		private float yOffsetFromSize(ePipSize i_PipSize)
-		{
-			float result;
-			switch (i_PipSize)
-			{
-				case ePipSize.Large:
-					result = Constants.k_VerticalSizeOffsetLarge;
-					break;
-				case ePipSize.Medium:
-					result = Constants.k_VerticalSizeOffsetMedium;
-					break;
-				default:
-					result = Constants.k_VerticalSizeOffsetSmall;
-					break;
-			}
-
-			return result;
-		}
-
-		private static Dictionary<T, int> multisetUnion<T>(Dictionary<T, int> dictOne, Dictionary<T, int> dictTwo)
-		{
-			Dictionary<T, int> result = new Dictionary<T, int>();
-			foreach (T key in dictOne.Keys.Union(dictTwo.Keys))
-			{
-				int value = 0, outValue;
-				if (dictOne.TryGetValue(key, out outValue))
-				{
-					value += outValue;
-				}
-				if (dictTwo.TryGetValue(key, out outValue))
-				{
-					value += outValue;
-				}
-
-				result[key] = value;
-			}
-
-			return result;
 		}
 
 		public void Select()

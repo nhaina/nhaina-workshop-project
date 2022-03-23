@@ -214,6 +214,8 @@ namespace Homeworlds.Logic
 			}
 
 			newState.ships.RemoveAll(shipRemovalPolicy);
+			tryRemoveStar(i_ToEdit, newState);
+
 			return newState;
 
 			void visitor_VisitingStar(Star star)
@@ -250,10 +252,10 @@ namespace Homeworlds.Logic
 			}
 		}
 
-		public static BoardState CreateInitial(Homeworld player1Homeworld, Ship player1Mothership, 
+		public static BoardState CreateInitial(Homeworld player1Homeworld, Ship player1Mothership,
 			Homeworld player2Homeworld, Ship player2Mothership)
 		{
-			if (player1Homeworld.Owner != ePlayer.Player1 ||  player1Homeworld.Owner != player1Mothership.Owner ||
+			if (player1Homeworld.Owner != ePlayer.Player1 || player1Homeworld.Owner != player1Mothership.Owner ||
 				!player1Mothership.Location.Equals(player1Homeworld))
 			{
 				throw new ArgumentException("Player1 Mothership and homeworld are not at sync!");

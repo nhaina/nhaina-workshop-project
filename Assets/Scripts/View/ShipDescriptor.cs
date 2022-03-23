@@ -32,22 +32,22 @@ namespace Homeworlds.View
 			}
 
 			transform.parent = hangar;
-			transform.position = calcPosition(hangarOffset, i_Ship.Size);
+			transform.localPosition = calcPosition(hangarOffset, i_Ship.Size);
 
 			GameObject go = Instantiate(Store.FromPipSize(i_Ship.Size), model);
 			go.transform.rotation = Quaternion.Euler(yaw, 0, 0);
 			go.GetComponentInChildren<Renderer>().material = Store.FromPipColor(i_Ship.Color);
-			i_Location.SetHangarOffset(i_Ship.Owner, calcHangarOffset(hangarOffset, i_Ship.Size));
+			i_Location.SetHangarOffset(i_Ship.Owner, hangarOffset + calcHangarOffset(i_Ship.Size));
 		}
 
 		private Vector3 calcPosition(float hangarOffset, ePipSize size)
 		{
-			return new Vector3(calcHangarOffset(hangarOffset, size), 0, 0);
+			return new Vector3(hangarOffset + 0.5f * calcHangarOffset(size), 0, 0);
 		}
 
-		private float calcHangarOffset(float hangarOffset, ePipSize size)
+		private float calcHangarOffset(ePipSize size)
 		{
-			float sign = Mathf.Sign(hangarOffset);
+			float sign = ship.Owner == ePlayer.Player1 ? 1 : -1;
 			float offset;
 			switch (size)
 			{
@@ -61,10 +61,19 @@ namespace Homeworlds.View
 					offset = SmallHangarOffset;
 					break;
 			}
-			return hangarOffset + sign * offset;
+			return sign * offset;
 		}
 
 		public ViewBoardPrefabStore Store { get; set; }
+
+		// remove this
+		public Ship Ship
+		{
+			get
+			{
+				return ship;
+			}
+		}
 
 		public void Select()
 		{

@@ -89,6 +89,8 @@ namespace Homeworlds.View
 		public void Initialize(IStar i_Star)
 		{
 			Star = i_Star;
+			SetHangarOffset(ePlayer.Player1, Constants.HorizontalOffsetFromSize(Star.Attributes.First().Size));
+			SetHangarOffset(ePlayer.Player2, -GetHangarOffset(ePlayer.Player1));
 			createModel(i_Star);
 		}
 
@@ -112,7 +114,6 @@ namespace Homeworlds.View
 		protected virtual void OnSelected()
 		{
 			Selected?.Invoke(this);
-			Debug.Log($"Star! {string.Join(",", Star.Attributes)}");
 		}
 	}
 }

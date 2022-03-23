@@ -42,7 +42,7 @@ namespace Homeworlds.View.Editor
 			colorsFoldoutShown = EditorGUILayout.Foldout(colorsFoldoutShown, "Pip Color Materials:");
 			if (colorsFoldoutShown)
 			{
-				foreach (ePipColor color in Enum.GetValues(typeof(ePipColor)))
+				foreach (ePipColor color in Logic.Utilities.AllPipColors)
 				{
 					targetStore.SetPipColorMaterial(color, (Material)EditorGUILayout.ObjectField(
 						$"{color}:", targetStore.FromPipColor(color), typeof(Material), false));
@@ -54,7 +54,7 @@ namespace Homeworlds.View.Editor
 			sizesFoldoutShown = EditorGUILayout.Foldout(sizesFoldoutShown, "Pip Sizes Prefabs:");
 			if (sizesFoldoutShown)
 			{
-				foreach (ePipSize size in Enum.GetValues(typeof(ePipSize)))
+				foreach (ePipSize size in Logic.Utilities.AllPipSizes)
 				{
 					targetStore.SetPipSizePrefab(size, (GameObject)EditorGUILayout.ObjectField(
 						$"{size}:", targetStore.FromPipSize(size), typeof(GameObject), !targetingPrefab));

@@ -74,7 +74,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0aae0469f747aad4cabbc15143296533, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  LargeHangarOffset: 0.45
-  MediumHangarOffset: 0.35
-  SmallHangarOffset: 0.25
+  LargeHangarOffset: 0.525
+  MediumHangarOffset: 0.425
+  SmallHangarOffset: 0.325
   model: {fileID: 917148065577333201}

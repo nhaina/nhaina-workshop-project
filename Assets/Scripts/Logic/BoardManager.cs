@@ -1,9 +1,7 @@
 ﻿using Homeworlds.Common;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using UnityEngine;
 
 namespace Homeworlds.Logic
 {
@@ -24,13 +22,18 @@ namespace Homeworlds.Logic
 
 			set
 			{
-				currentState = value;
+				currentState = value.Clone();
 			}
 		}
+
+		public MovesFactory MovesFactory { get; set; }
+
+		public Dictionary<Pip, int> BankState { get { return bank; } }
 
 		public BoardManager()
 		{
 			bank = new Dictionary<Pip, int>();
+			MovesFactory = new MovesFactory();
 		}
 
 		public void StartNewGame()
@@ -41,8 +44,30 @@ namespace Homeworlds.Logic
 			sacrificeRecordedAt = -1;
 		}
 
+		// TODO: Add tests. Might break if eBoardLifecycle will change
+		public void CheckBoardStatus()
+		{
+			if (currentState.Status == eBoardLifecycle.Ongoing)
+			{
+				bool hw1DestroyedOrEmpty = currentState.Player1Homeworld.Destroyed || isEmpty(currentState.Player1Homeworld);
+				bool hw2DestroyedOrEmpty = currentState.Player2Homeworld.Destroyed || isEmpty(currentState.Player2Homeworld);
+				int status = (hw1DestroyedOrEmpty ? 2 : 0) + (hw2DestroyedOrEmpty ? 1 : 0);
+				currentState.Status = 1 + (eBoardLifecycle)status;
+			}
+		}
+
+		private bool isEmpty(Homeworld i_QueriedHomeWorld)
+		{
+			return currentState.Ships.All(s => !s.Location.Equals(i_QueriedHomeWorld));
+		}
+
 		public void SetupRound(Homeworld player1Homeworld, Ship player1Mothership, Homeworld player2Homeworld, Ship player2Mothership)
 		{
+			if (currentState.Status != eBoardLifecycle.Setup)
+			{
+				throw new InvalidOperationException("Cannot setup an ended or ongoing game!");
+			}
+
 			currentState = BoardState.CreateInitial(player1Homeworld, player1Mothership, player2Homeworld, player2Mothership);
 			currentState.Status = eBoardLifecycle.Ongoing;
 			updateBankState();
@@ -56,6 +81,16 @@ namespace Homeworlds.Logic
 			actionEnded(false);
 		}
 
+		public IEnumerable<IBoardMove> CanDeclareCatastrophe(IStar star)
+		{
+			List<IBoardMove> catMoves = currentState.Ships.Where(s=>s.Location.Equals(star))
+				.Select(s=>s.Attributes).Concat(star.Attributes)
+				.GroupBy(p => p.Color).Where(grp => grp.Count() >= 4)
+				.Select(grp => MovesFactory.CreateCatastropheMove(star, grp.Key)).ToList();
+			catMoves.ForEach(c => c.BoardManager = this);
+			return catMoves;
+		}
+
 		private void updateBankState()
 		{
 			var pipsGroups = currentState.Ships.Select(s => s.Attributes)
@@ -63,10 +98,16 @@ namespace Homeworlds.Logic
 				.Concat(currentState.Player1Homeworld.Attributes)
 				.Concat(currentState.Player2Homeworld.Attributes)
 				.GroupBy(p => p);
-			bank.Clear();
+			foreach (ePipColor color in Enum.GetValues(typeof(ePipColor)))
+			{
+				foreach (ePipSize size in Enum.GetValues(typeof(ePipSize)))
+				{
+					bank[new Pip(color, size)] = 3;
+				}
+			}
 			foreach (var group in pipsGroups)
 			{
-				bank[group.Key] = group.Count();
+				bank[group.Key] -= group.Count();
 			}
 		}
 
@@ -103,15 +144,14 @@ namespace Homeworlds.Logic
 			}
 		}
 
-		public void BuildShip(Ship i_Initiator, ePipColor i_NewShipColor)
+		public void BuildShip(Ship i_Initiator)
 		{
-			if (isSacrifiedColor(ePipColor.Green) && isColorAccessible(i_Initiator, ePipColor.Green) &&
-				isColoredShipAccessible(i_Initiator, i_NewShipColor))
+			if (isSacrifiedColor(ePipColor.Green) && isColorAccessible(i_Initiator, ePipColor.Green))
 			{
 				bool succeed = false;
 				foreach (ePipSize size in Enum.GetValues(typeof(ePipSize)))
 				{
-					Pip key = new Pip(i_NewShipColor, size);
+					Pip key = new Pip(i_Initiator.Color, size);
 					if (bank.ContainsKey(key))
 					{
 						currentState = BoardState.AddShip(currentState, new Ship(key, i_Initiator.Owner, i_Initiator.Location));
@@ -129,9 +169,8 @@ namespace Homeworlds.Logic
 			else
 			{
 				// can't do that
-				throw new InvalidOperationException($"Can't do that. No {ePipColor.Green} or {i_NewShipColor} available");
+				throw new InvalidOperationException($"Can't do that. No {ePipColor.Green} available");
 			}
-
 		}
 
 		public void TransformShip(Ship i_Initiator, ePipColor i_DestColor)
@@ -153,14 +192,63 @@ namespace Homeworlds.Logic
 		public void MoveShip(Ship i_Initiator, IStar i_NewLocation)
 		{
 			if (isSacrifiedColor(ePipColor.Yellow) && isColorAccessible(i_Initiator, ePipColor.Yellow) &&
-				areSizesDifferent(i_Initiator.Location, i_NewLocation))
+				areDifferentSizes(i_Initiator.Location, i_NewLocation))
 			{
+				if (!currentState.IsKnownStar(i_NewLocation) && i_NewLocation is Star newStar)
+				{
+					currentState = BoardState.AddStar(currentState, newStar);
+				}
 				currentState = BoardState.UpdateShip(currentState, i_Initiator, new Ship(i_Initiator.Attributes, i_Initiator.Owner, i_NewLocation));
 				actionEnded();
 			}
 		}
 
-		private bool areSizesDifferent(IStar i_FirstStar, IStar i_SecondStar)
+		//TODO: refactor this. please
+		public IEnumerable<IBoardMove> GetAvailableMoves(Ship i_Initiator)
+		{
+			List<IBoardMove> available = new List<IBoardMove>();
+			IEnumerable<Ship> shipsNearInitiator = currentState.Ships.Where(ship =>
+				ship.Owner == i_Initiator.Owner &&
+				ship.Location.Equals(i_Initiator.Location)
+			);
+			foreach (ePipColor color in getAvailableColors(shipsNearInitiator, i_Initiator.Location))
+			{
+				switch (color)
+				{
+					case ePipColor.Red:
+						IEnumerable<Ship> enemyShips = currentState.Ships.Where(ship =>
+						ship.Owner != i_Initiator.Owner && ship.Location.Equals(i_Initiator.Location)
+						);
+						available.AddRange(shipsNearInitiator.Zip(enemyShips, (s, t) => (RaidMove)MovesFactory.CreateRaidMove(s, t)).Where(rm => rm.RaiderShip.Size >= rm.TargetedShip.Size));
+						break;
+					case ePipColor.Green:
+						available.AddRange(shipsNearInitiator.Select(ship => MovesFactory.CreateBuildMove(ship)));
+						break;
+					case ePipColor.Blue:
+						available.AddRange(shipsNearInitiator.Join(bank.Keys, s=>s.Attributes, p=>p, (s, p) => (TransformMove)MovesFactory.CreateTransformMove(s, p.Color))
+							.Where(tm => tm.DestinationColor != tm.TargetShip.Color));
+						break;
+					case ePipColor.Yellow:
+						IEnumerable<IStar> allLocations = currentState.Stars.Cast<IStar>()
+							.Concat(new IStar[2] { currentState.Player1Homeworld, currentState.Player2Homeworld })
+							.Concat(bank.Keys.Select(p => (IStar)new Star(p)))
+							.Where(s => areDifferentSizes(s, i_Initiator.Location));
+						available.AddRange(shipsNearInitiator.Zip(allLocations, (s, l) => (FlyMove)MovesFactory.CreateFlyMove(s, l)));
+						break;
+				}
+			}
+
+			available.ForEach(bm => bm.BoardManager = this);
+
+			return available;
+		}
+
+		private IEnumerable<ePipColor> getAvailableColors(IEnumerable<Ship> i_Ships, IStar i_Location)
+		{
+			return i_Ships.Select(s => s.Color).Concat(i_Location.Attributes.Select(p => p.Color)).Distinct();
+		}
+
+		private bool areDifferentSizes(IStar i_FirstStar, IStar i_SecondStar)
 		{
 			var first = i_FirstStar.Attributes.Select(p => p.Size);
 			HashSet<ePipSize> second = new HashSet<ePipSize>(i_SecondStar.Attributes.Select(p => p.Size));
