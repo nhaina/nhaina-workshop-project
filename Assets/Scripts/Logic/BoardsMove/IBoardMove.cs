@@ -10,5 +10,6 @@ namespace Homeworlds.Logic
 		BoardManager BoardManager { get; set; }
 
 		void Execute();
+		void Accept(IBoardMoveVisitor visitor);
 	}
 }

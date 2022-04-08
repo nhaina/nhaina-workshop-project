@@ -12,14 +12,53 @@ namespace Homeworlds.Logic
 			void Visit(Star star);
 		}
 
-		private readonly int id;
+		public class StarId : IEquatable<StarId>
+		{
+			public int WrappedInt { get; private set; }
+			public StarId(int value)
+			{
+				WrappedInt = value;
+			}
+
+			public static implicit operator int(StarId i_IdObject)
+			{
+				return i_IdObject.WrappedInt;
+			}
+
+			public static explicit operator StarId(int i_ToWrap)
+			{
+				return new StarId(i_ToWrap);
+			}
+
+			public override bool Equals(object obj)
+			{
+				return obj != null && obj is StarId other && Equals(other);
+			}
+
+			public bool Equals(StarId other)
+			{
+				return WrappedInt == other;
+			}
+
+			public override int GetHashCode()
+			{
+				return WrappedInt.GetHashCode();
+			}
+
+			public override string ToString()
+			{
+				return WrappedInt.ToString();
+			}
+		}
+
+		private readonly StarId id;
 		private static int s_IdGenerator = 0;
 		public readonly Pip Attributes;
 
 		public Star(Pip i_Attributes)
 		{
 			Attributes = i_Attributes;
-			id = s_IdGenerator++;
+			id = (StarId)s_IdGenerator++;
 		}
 
 		public Star(ePipColor i_StarColor, ePipSize i_StarSize)

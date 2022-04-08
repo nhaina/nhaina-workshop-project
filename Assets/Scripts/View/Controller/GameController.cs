@@ -11,6 +11,8 @@ namespace Homeworlds.Controller
 		private ViewBoard viewBoard;
 		[SerializeField]
 		private GUIManager guiManager;
+		[SerializeField]
+		private PlayerController playerController;
 		private MainController controller;
 
 		private void Awake()
@@ -23,6 +25,28 @@ namespace Homeworlds.Controller
 		{
 			controller.View = viewBoard;
 			controller.GUI = guiManager;
+			controller.BoardUpdated += controller_InitialBoardUpdated;
+			controller.BoardManager.TurnEnded += BoardManager_TurnEnded;
+		}
+
+		private void BoardManager_TurnEnded()
+		{
+			Debug.Log($"Turn Ended! ActivePlayer: {controller.BoardManager.ActivePlayer}");
+		}
+
+		private void controller_InitialBoardUpdated(Logic.BoardState obj)
+		{
+			playerController.ClickedOutsideUI += playerController_ClickedOutsideUI;
+			controller.BoardUpdated -= controller_InitialBoardUpdated;
+		}
+
+		private void playerController_ClickedOutsideUI(Vector2 arg1, CancellationRequest arg2)
+		{
+			if (guiManager.IsUIOpen)
+			{
+				arg2.RequestCancel = true;
+				guiManager.CloseUI();
+			}
 		}
 
 		private void Start()

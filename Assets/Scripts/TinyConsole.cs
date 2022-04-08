@@ -34,6 +34,16 @@ public class TinyConsole : MonoBehaviour
 			builder.Clear();
 		}
 		builder.AppendLine(logString);
+		if (type == LogType.Error || type == LogType.Exception)
+		{
+
+			string[] splittedSt = stackTrace.Split(new string[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
+			for (int i = 0; i < Math.Min(5, splittedSt.Length); i++)
+			{
+				builder.AppendLine(splittedSt[i]);
+			}
+			linesCounter += 5;
+		}
 		linesCounter = (linesCounter + 1) % 10;
 		text.text = builder.ToString();
 	}

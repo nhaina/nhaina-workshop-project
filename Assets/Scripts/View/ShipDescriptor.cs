@@ -83,7 +83,7 @@ namespace Homeworlds.View
 		protected virtual void OnSelected()
 		{
 			Selected?.Invoke(this);
-			Debug.Log($"Ship! {string.Join(",", ship.Attributes)}");
+			Debug.Log($"Ship! {ship.Attributes}");
 		}
 	}
 }

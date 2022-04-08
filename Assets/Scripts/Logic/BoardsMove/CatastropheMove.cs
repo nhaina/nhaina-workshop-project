@@ -16,5 +16,18 @@ namespace Homeworlds.Logic
 		{
 			BoardManager.DeclareCatastrophe(TargetSystem, CatastropheColor);
 		}
+
+		public void Accept(IBoardMoveVisitor visitor)
+		{
+			if (visitor is ICatastropheMoveVisitor catVisitor)
+			{
+				catVisitor.Visit(this);
+			}
+			else
+			{
+				visitor.Visit();
+			}
+		}
+
 	}
 }

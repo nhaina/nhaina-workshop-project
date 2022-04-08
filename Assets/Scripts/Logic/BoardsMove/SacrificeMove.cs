@@ -15,5 +15,17 @@ namespace Homeworlds.Logic
 		{
 			BoardManager.SacrificeShip(TargetToSacrifice);
 		}
+
+		public void Accept(IBoardMoveVisitor visitor)
+		{
+			if (visitor is ISacrificeMoveVisitor sacrificeVisitor)
+			{
+				sacrificeVisitor.Visit(this);
+			}
+			else
+			{
+				visitor.Visit();
+			}
+		}
 	}
 }

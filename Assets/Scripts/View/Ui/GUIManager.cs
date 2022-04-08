@@ -1,4 +1,5 @@
 ﻿using Homeworlds.Common;
+using Homeworlds.Logic;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -14,35 +15,53 @@ namespace Homeworlds.View
 		private UIPrefabStore store;
 		[SerializeField]
 		private UIControlPanel mainPanel;
+		public Action<IUIDrawable> SelectionCallback { get; set; }
 
 		public UIPrefabStore Store { get { return store; } set { store = value; } }
 		public UIControlPanel MainPanel { get { return mainPanel; } set { mainPanel = value; } }
 
-		public void PopSelection<T>(IEnumerable<T> i_Options, string i_Title, int i_SelectionNeeded = 1, int i_MaxControlsInRow = -1)
+		public bool IsUIOpen { get { return mainPanel.gameObject.activeInHierarchy; } }
+
+		public void PopSelection(IEnumerable<IUIDrawable> i_Options, string i_Title, int i_MaxControlsInRow = -1)
 		{
+			mainPanel.gameObject.SetActive(false);
 			mainPanel.enabled = false;
 			mainPanel.ClearChildren();
 			mainPanel.SetTitle(i_Title);
 			int controlsInRow = i_MaxControlsInRow > 0 ? i_MaxControlsInRow : Store.ControlsCountInRow;
-			int optionsCount = i_Options.Count();
+			int optionsCount = i_Options.Count(), currentCount = optionsCount;
 			do
 			{
 				int itemsInRow = Math.Min(controlsInRow, optionsCount);
-				createRow(i_Options.Take(itemsInRow));
-				optionsCount -= itemsInRow;
-			} while (optionsCount > 0);
+				createRow(i_Options.Skip(optionsCount - currentCount).Take(itemsInRow));
+				currentCount -= itemsInRow;
+			} while (currentCount > 0);
 
 			mainPanel.enabled = true;
+			mainPanel.gameObject.SetActive(true);
 		}
 
-		private void createRow<T>(IEnumerable<T> i_Items)
+		private void createRow(IEnumerable<IUIDrawable> i_Drawables)
 		{
-			GameObject row = Instantiate(Store.RowPanel, mainPanel.transform);
-			foreach (T item in i_Items)
+			GameObject row = Instantiate(Store.RowPanel);
+			mainPanel.AddChild(row);
+			foreach (IUIDrawable drawable in i_Drawables)
 			{
 				GameObject selection = Instantiate(Store.UIButton, row.transform);
-				selection.GetComponentInChildren<Text>().text = item.ToString();
+				Button buttonComp = selection.GetComponentInChildren<Button>();
+				buttonComp.onClick.AddListener(() => SelectionCallback(drawable));
+				selection.GetComponentInChildren<Text>().text = drawable.Content;
 			}
+		}
+
+		public void CloseUI()
+		{
+			mainPanel.gameObject.SetActive(false);
+		}
+
+		public void PopInformation(ISelectable i_Selectable)
+		{
+			Debug.Log(i_Selectable);
 		}
 	}
 }

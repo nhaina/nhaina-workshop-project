@@ -16,6 +16,8 @@ namespace Homeworlds.View
 		private BankDescriptor bank;
 		[SerializeField]
 		private Rect gameField;
+		[SerializeField]
+		private StarNamesSo starNamesList;
 		public float arrangerMinRowHeight = 1.4f;
 		public IStarArranger StarArranger { get; set; }
 
@@ -24,7 +26,9 @@ namespace Homeworlds.View
 
 		private readonly List<StarDescriptor> regularStars = new List<StarDescriptor>();
 		private readonly List<ShipDescriptor> ships = new List<ShipDescriptor>();
-		StarDescriptor player1HomeworldDesc, player2HomeworldDesc;
+		private readonly Dictionary<int, int> starNames = new Dictionary<int, int>();
+		private StarDescriptor player1HomeworldDesc, player2HomeworldDesc;
+		private int nextName;
 
 		private void OnDrawGizmos()
 		{
@@ -40,9 +44,10 @@ namespace Homeworlds.View
 		private void Awake()
 		{
 			StarArranger = StarArranger ?? new LinesFirstArranger() { RowHeight = arrangerMinRowHeight };
+			nextName = -2;
 		}
 
-		public void UpdateField(BoardState newState, Dictionary<Pip, int> bankState)
+		public void UpdateField(BoardState newState, IReadOnlyDictionary<Pip, int> bankState)
 		{
 			destroyChildren();
 
@@ -66,6 +71,11 @@ namespace Homeworlds.View
 			arrangeStars();
 
 			bank.UpdateState(bankState);
+		}
+
+		public string GetStarName(int starId)
+		{
+			return (starId >= 0 && starNames[starId] >=0) ? starNamesList[starNames[starId]] : "Homeworld";
 		}
 
 		private void arrangeStars()
@@ -118,6 +128,10 @@ namespace Homeworlds.View
 			starDesc.Store = store;
 			starDesc.Initialize(star);
 			starDesc.Selected += SelectStarCallback;
+			if (!starNames.ContainsKey(star.Identifier))
+			{
+				starNames.Add(star.Identifier, nextName++);
+			}
 			return starDesc;
 		}
 
@@ -133,7 +147,6 @@ namespace Homeworlds.View
 			return result;
 		}
 
-#if UNITY_EDITOR
 		private void destroyChildren()
 		{
 			regularStars.Clear();
@@ -141,20 +154,12 @@ namespace Homeworlds.View
 			Transform[] children = transform.Cast<Transform>().ToArray();
 			foreach (Transform child in children)
 			{
+#if UNITY_EDITOR
 				DestroyImmediate(child.gameObject);
-			}
-		}
 #else
-		private void destroyChildren()
-		{
-			regularStars.Clear();
-			ships.Clear();
-			Transform[] children = transform.Cast<Transform>().ToArray();
-			foreach (Transform child in transform)
-			{
 				Destroy(child.gameObject);
+#endif
 			}
 		}
-#endif
 	}
 }

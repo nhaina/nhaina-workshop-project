@@ -13,22 +13,8 @@ namespace Homeworlds.View
 
 		private void Awake()
 		{
-			playerCamera = playerCamera ? playerCamera : Camera.main;
-			/*manager = new Logic.BoardManager();
-			manager.StartNewGame();
-			Logic.Homeworld hw1 = new Logic.Homeworld(Common.ePipColor.Red, Common.ePipSize.Large, Common.ePipColor.Blue, Common.ePipSize.Medium, Common.ePlayer.Player1, false);
-			Logic.Homeworld hw2 = new Logic.Homeworld(Common.ePipColor.Yellow, Common.ePipSize.Small, Common.ePipColor.Blue, Common.ePipSize.Medium, Common.ePlayer.Player2, false);
-			manager.SetupRound(hw1, new Logic.Ship(new Common.Pip(Common.ePipColor.Green, Common.ePipSize.Large), Common.ePlayer.Player1, hw1),
-							hw2, new Logic.Ship(new Common.Pip(Common.ePipColor.Green, Common.ePipSize.Large), Common.ePlayer.Player2, hw2));*/
+			playerCamera = playerCamera ? playerCamera : Camera.main;	
 		}
-
-		/*private void OnEnable()
-		{
-			viewBoard = FindObjectOfType<ViewBoard>();
-			viewBoard.SelectStarCallback = onSelectedStar;
-			viewBoard.SelectShipCallback = onSelectedShip;
-			viewBoard.UpdateField(manager.CurrentState);
-		}*/
 
 		private void Update()
 		{
@@ -54,7 +40,7 @@ namespace Homeworlds.View
 			}
 		}
 
-		protected bool OnClickedOutsideUI(Vector2 i_ScreenPositionClicked)
+		protected virtual bool OnClickedOutsideUI(Vector2 i_ScreenPositionClicked)
 		{
 			CancellationRequest request = new CancellationRequest();
 			ClickedOutsideUI?.Invoke(i_ScreenPositionClicked, request);
@@ -72,7 +58,7 @@ namespace Homeworlds.View
 					Touch touch = Input.GetTouch(i);
 					if (touch.phase == TouchPhase.Began)
 					{
-						touchHandled = EventSystem.current.IsPointerOverGameObject() || CastTouchRay(touch.position, touch.radius);
+						touchHandled = EventSystem.current.IsPointerOverGameObject(i) || CastTouchRay(touch.position, touch.radius - touch.radiusVariance);
 					}
 				}
 			}

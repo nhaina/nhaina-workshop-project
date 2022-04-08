@@ -15,5 +15,17 @@ namespace Homeworlds.Logic
 		{
 			BoardManager.BuildShip(TargetToClone);
 		}
+
+		public void Accept(IBoardMoveVisitor visitor)
+		{
+			if (visitor is IBuildMoveVisitor raidVisitor)
+			{
+				raidVisitor.Visit(this);
+			}
+			else
+			{
+				visitor.Visit();
+			}
+		}
 	}
 }

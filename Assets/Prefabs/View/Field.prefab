@@ -51,4 +51,5 @@ MonoBehaviour:
     y: -3.2
     width: 5
     height: 7.5
+  starNamesList: {fileID: 11400000, guid: 1e89c1d479222a2408e924d283998eb4, type: 2}
   arrangerMinRowHeight: 0.7

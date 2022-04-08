@@ -13,5 +13,17 @@
 		{
 			BoardManager.RaidShip(RaiderShip, TargetedShip);
 		}
+
+		public void Accept(IBoardMoveVisitor visitor)
+		{
+			if (visitor is IRaidMoveVisitor raidVisitor)
+			{
+				raidVisitor.Visit(this);
+			}
+			else
+			{
+				visitor.Visit();
+			}
+		}
 	}
 }

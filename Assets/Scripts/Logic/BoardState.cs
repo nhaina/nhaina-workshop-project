@@ -46,6 +46,8 @@ namespace Homeworlds.Logic
 			get { return ships.Count; }
 		}
 
+		public ePlayer ActivePlayer { get; set; }
+
 		public int StarsCount
 		{
 			get { return stars.Count; }
@@ -68,33 +70,24 @@ namespace Homeworlds.Logic
 
 		public override bool Equals(object obj)
 		{
-			return obj is BoardState other && Equals(other);
+			return obj != null && obj is BoardState other && Equals(other);
 		}
 
 		public override int GetHashCode()
 		{
 			int shipsCount = (ships?.Count).GetValueOrDefault() % k_HashPrime;
 			int starsCount = (stars?.Count).GetValueOrDefault() % k_HashPrime;
-			return shipsCount + k_HashPrimePlusOne * starsCount;
-		}
-
-		public static bool operator ==(BoardState first, BoardState second)
-		{
-			return first.Equals(second);
-		}
-
-		public static bool operator !=(BoardState first, BoardState second)
-		{
-			return !(first == second);
+			return 2 * (shipsCount + k_HashPrimePlusOne * starsCount) + (int)ActivePlayer;
 		}
 
 		public bool Equals(BoardState other)
 		{
-			return (player1Homeworld == other.player1Homeworld &&
+			return other != null &&
+				player1Homeworld == other.player1Homeworld &&
 				player2Homeworld == other.player2Homeworld &&
 				multisetEquals(stars, other.stars) &&
-				multisetEquals(ships, other.ships)
-			);
+				multisetEquals(ships, other.ships) &&
+				ActivePlayer == other.ActivePlayer;
 		}
 
 		public IEnumerable<Ship> Ships { get { return ships; } }
@@ -122,109 +115,95 @@ namespace Homeworlds.Logic
 			}
 		}
 
-		#region Static Factory Methods
-
-		public static readonly BoardState Empty = new BoardState();
-
-		public static BoardState AddShip(BoardState i_Original, Ship i_ShipToAdd)
+		public void AddShip(Ship i_ShipToAdd)
 		{
-			if (!i_Original.IsKnownStar(i_ShipToAdd.Location))
+			if (!IsKnownStar(i_ShipToAdd.Location))
 			{
 				throw new ArgumentOutOfRangeException("Attempt to add ship to an invalid star!");
 			}
 
-			BoardState newState = i_Original.Clone();
-			newState.ships.Add(i_ShipToAdd);
-
-			return newState;
+			ships.Add(i_ShipToAdd);
 		}
 
-		// TODO: Add Tests
-		public static BoardState UpdateShip(BoardState i_Original, Ship i_OriginalShip, Ship i_UpdatedShip)
+		public void UpdateShip(Ship i_OriginalShip, Ship i_UpdatedShip)
 		{
-			if (!i_Original.IsKnownStar(i_OriginalShip.Location) || !i_Original.IsKnownStar(i_UpdatedShip.Location))
+			if (!IsKnownStar(i_OriginalShip.Location) || !IsKnownStar(i_UpdatedShip.Location))
 			{
-				throw new ArgumentOutOfRangeException("Attempt to update ship from or to an invalid star!");
+				throw new ArgumentException("Attempt to update ship from or to an invalid star!");
 			}
 
-			BoardState newState = i_Original.Clone();
-			int shipIndex = newState.ships.FindIndex(ship => ship.Equals(i_OriginalShip));
-			newState.ships[shipIndex] = i_UpdatedShip;
+			int shipIndex = ships.FindIndex(ship => ship.Equals(i_OriginalShip));
+			ships[shipIndex] = i_UpdatedShip;
+		}
 
-			if (!i_OriginalShip.Location.Equals(i_UpdatedShip.Location))
+		public void AddStar(Star i_StarToAdd)
+		{
+			stars.Add(i_StarToAdd);
+		}
+
+		public void RemoveShip(Ship i_ToRemove)
+		{
+			if (!ships.Contains(i_ToRemove))
 			{
-				tryRemoveStar(i_OriginalShip.Location, newState);
+				throw new ArgumentException("Attempt to remove an unknown ship!");
 			}
 
-			return newState;
+			ships.Remove(i_ToRemove);
 		}
 
-
-		public static BoardState AddStar(BoardState i_Original, Star i_StarToAdd)
+		public void DestroyStar(IStar i_ToRemove)
 		{
-			BoardState newState = i_Original.Clone();
-			newState.stars.Add(i_StarToAdd);
+			GenericStarVisitor starVisitor = new GenericStarVisitor(removeStar, visitingHomeworld);
+			i_ToRemove.Accept(starVisitor);
 
-			return newState;
-		}
-
-		/// <summary>
-		/// Removes a ship from the board. if the ship is the last in the star (exluding homeworlds)
-		/// the star is also removed
-		/// </summary>
-		/// <param name="i_Original">the original BoardState to mutate</param>
-		/// <param name="i_ToRemove">the ship to remove</param>
-		/// <returns></returns>
-		public static BoardState RemoveShip(BoardState i_Original, Ship i_ToRemove)
-		{
-			if (!i_Original.ships.Contains(i_ToRemove))
+			void visitingHomeworld(Homeworld hw)
 			{
-				throw new ArgumentOutOfRangeException("Attempt to remove an unknown ship!");
-			}
-
-			BoardState newState = i_Original.Clone();
-			newState.ships.Remove(i_ToRemove);
-			tryRemoveStar(i_ToRemove.Location, newState);
-
-			return newState;
-		}
-
-		private static void tryRemoveStar(IStar i_Star, BoardState newState)
-		{
-			if (i_Star is Star star && newState.ships.All(s => !s.Location.Equals(i_Star)))
-			{
-				newState.stars.Remove(star);
+				if (hw == player1Homeworld)
+				{
+					player1Homeworld = Homeworld.MarkAsDestroyed(hw);
+				}
+				else
+				{
+					player2Homeworld = Homeworld.MarkAsDestroyed(hw);
+				}
 			}
 		}
 
-		public static BoardState RemoveColorFromStar(BoardState i_Original, IStar i_ToEdit, ePipColor i_ColorToRemove)
+		public bool IsStarEmpty(IStar i_Star)
 		{
-			if (!i_Original.IsKnownStar(i_ToEdit))
+			return ships.All(s => !s.Location.Equals(i_Star));
+		}
+
+		public bool IsHomeworldAbandoned(Homeworld i_Homeworld)
+		{
+			return ships.All(s => s.Owner != i_Homeworld.Owner || !s.Location.Equals(i_Homeworld));
+		}
+
+		private void removeStar(Star i_ToRemove)
+		{
+			stars.Remove(i_ToRemove);
+			ships.RemoveAll(s => s.Location.Equals(i_ToRemove));
+		}
+
+		public void RemoveColorFromStar(IStar i_ToEdit, ePipColor i_ColorToRemove)
+		{
+			if (!IsKnownStar(i_ToEdit))
 			{
-				throw new ArgumentOutOfRangeException("Attempt to remove an unknown star!");
+				throw new ArgumentOutOfRangeException("Attempt to remove color from an unknown star!");
 			}
 
-			BoardState newState = i_Original.Clone();
-			Predicate<Ship> shipRemovalPolicy = ship => ship.Location.Equals(i_ToEdit) && (ship.Color == i_ColorToRemove);
-			GenericStarVisitor visitor = new GenericStarVisitor(visitor_VisitingStar, visitor_VisitingHomeworld);
+			GenericStarVisitor visitor = new GenericStarVisitor(removeStar, visitingHomeworld);
 
 			if (i_ToEdit.Attributes.Any(p => p.Color == i_ColorToRemove))
 			{
 				i_ToEdit.Accept(visitor);
 			}
-
-			newState.ships.RemoveAll(shipRemovalPolicy);
-			tryRemoveStar(i_ToEdit, newState);
-
-			return newState;
-
-			void visitor_VisitingStar(Star star)
+			else
 			{
-				shipRemovalPolicy = ship => ship.Location.Equals(i_ToEdit);
-				newState.stars.Remove(star);
+				ships.RemoveAll(ship => ship.Location.Equals(i_ToEdit) && (ship.Color == i_ColorToRemove));
 			}
 
-			void visitor_VisitingHomeworld(Homeworld homeworld)
+			void visitingHomeworld(Homeworld homeworld)
 			{
 				if (homeworld.SecondaryAttributes.HasValue)
 				{
@@ -238,19 +217,33 @@ namespace Homeworlds.Logic
 				else
 				{
 					homeworld = new Homeworld(homeworld.PrimaryAttributes, null, homeworld.Owner, true);
-					shipRemovalPolicy = null;
 				}
 
+				Homeworld oldHomeWorld;
 				if (homeworld.Owner == ePlayer.Player1)
 				{
-					newState.player1Homeworld = homeworld;
+					oldHomeWorld = player1Homeworld;
+					player1Homeworld = homeworld;
 				}
 				else
 				{
-					newState.player2Homeworld = homeworld;
+					oldHomeWorld = player2Homeworld;
+					player2Homeworld = homeworld;
 				}
+
+				List<Ship> shipsToUpdate = ships.Where(s => s.Location.Equals(oldHomeWorld)).ToList();
+				ships.RemoveAll(s => shipsToUpdate.Contains(s));
+				ships.AddRange(shipsToUpdate
+					.Where(s => s.Color != i_ColorToRemove)
+					.Select(s => new Ship(s.Attributes, s.Owner, homeworld))
+				);
 			}
 		}
+
+
+		#region Static Factory Methods
+
+		public static readonly BoardState Empty = new BoardState();
 
 		public static BoardState CreateInitial(Homeworld player1Homeworld, Ship player1Mothership,
 			Homeworld player2Homeworld, Ship player2Mothership)
@@ -281,7 +274,7 @@ namespace Homeworlds.Logic
 		/// <returns>
 		/// <code>true</code> if both null or if both contain the same keys and agrees on each key value. otherwise <code>false</code>
 		/// </returns>
-		private static bool multisetEquals<T>(IEnumerable<T> i_First, IEnumerable<T> i_Second) where T : IEquatable<T>
+		private static bool multisetEquals<T>(IEnumerable<T> i_First, IEnumerable<T> i_Second) where T : struct, IEquatable<T>
 		{
 			bool isFirstNull = i_First == null;
 			bool isSecondNull = i_Second == null;
@@ -297,7 +290,7 @@ namespace Homeworlds.Logic
 			return result;
 		}
 
-		public static Dictionary<T, int> toMultiset<T>(IEnumerable<T> i_Collection)
+		public static Dictionary<T, int> toMultiset<T>(IEnumerable<T> i_Collection) where T : struct, IEquatable<T>
 		{
 			Dictionary<T, int> result = new Dictionary<T, int>();
 			foreach (var group in i_Collection.GroupBy(o => o))

@@ -64,9 +64,7 @@ namespace Homeworlds.Logic
 		public bool Equals(Homeworld other)
 		{
 			return PrimaryAttributes.Equals(other.PrimaryAttributes) &&
-				SecondaryAttributes.HasValue &&
-				other.SecondaryAttributes.HasValue &&
-				SecondaryAttributes.Value.Equals(other.SecondaryAttributes) &&
+				SecondaryAttributes.Equals(other.SecondaryAttributes) &&
 				Owner.Equals(other.Owner);
 		}
 

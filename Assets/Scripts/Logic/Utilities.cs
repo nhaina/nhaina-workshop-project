@@ -15,6 +15,7 @@ namespace Homeworlds.Logic
 			s_AllPipColors = (ePipColor[])Enum.GetValues(typeof(ePipColor));
 			s_AllPipSizes = (ePipSize[])Enum.GetValues(typeof(ePipSize));
 			s_AllPips = new Pip[s_AllPipColors.Length * s_AllPipSizes.Length];
+
 			int idx = 0;
 			foreach (ePipColor color in s_AllPipColors)
 			{
@@ -31,6 +32,10 @@ namespace Homeworlds.Logic
 		public static IEnumerable<ePipColor> AllPipColors { get { return s_AllPipColors; } }
 		public static IEnumerable<ePipSize> AllPipSizes { get { return s_AllPipSizes; } }
 		public static IEnumerable<Pip> AllPips { get { return s_AllPips; } }
+
+		public static int PipColorsCount { get { return s_AllPipColors.Length; } }
+		public static int PipSizesCount { get { return s_AllPipSizes.Length; } }
+		public static int AllPipsCount { get { return s_AllPips.Length; } }
 
 		public static IEnumerable<Pip> AllOf(ePipColor i_Color)
 		{

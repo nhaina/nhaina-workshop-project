@@ -11,5 +11,17 @@
 		{
 			BoardManager.MoveShip(TargetShip, Destination);
 		}
+
+		public void Accept(IBoardMoveVisitor visitor)
+		{
+			if (visitor is IFlyMoveVisitor flyVisitor)
+			{
+				flyVisitor.Visit(this);
+			}
+			else
+			{
+				visitor.Visit();
+			}
+		}
 	}
 }

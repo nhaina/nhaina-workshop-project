@@ -14,8 +14,8 @@ namespace Homeworlds.View
 		[SerializeField]
 		private int controlsCountInRow;
 
-		public GameObject UIButton { get { return uIButton; } set { uIButton = value; } }
-		public GameObject RowPanel { get { return rowPanel; } set { rowPanel = value; } }
+		public GameObject UIButton { get { if (uIButton == null) { Debug.Log("Store->UIButton is Null!"); } return uIButton; } set { uIButton = value; } }
+		public GameObject RowPanel { get { if (uIButton == null) { Debug.Log("Store->RowPanel is Null!"); }; return rowPanel; } set { rowPanel = value; } }
 
 		public int ControlsCountInRow { get { return controlsCountInRow; } set { controlsCountInRow = value; } }
 	}

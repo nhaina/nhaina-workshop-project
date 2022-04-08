@@ -67,21 +67,16 @@ namespace Homeworlds.View
 			Gizmos.DrawWireCube(center, size);
 		}
 
-		public void UpdateState(Dictionary<Pip, int> newState)
+		public void UpdateState(IReadOnlyDictionary<Pip, int> newState)
 		{
 			destroyChildren();
-			Dictionary<Pip, int> pipsOnBoard = newState;
 
-			ePipColor[] colorValues = (ePipColor[])Enum.GetValues(typeof(ePipColor));
-			ePipSize[] sizeValues = (ePipSize[])Enum.GetValues(typeof(ePipSize));
-			foreach (ePipColor color in colorValues)
+			foreach (KeyValuePair<Pip,int> pair in newState)
 			{
-				foreach (ePipSize size in sizeValues)
-				{
-					pipsOnBoard.TryGetValue(new Pip(color, size), out int count);
-					createCell(size, color, Constants.k_MaxPipsPerColorSize - count,
-						1 - (k_OffsetPercentX + (float)size) / sizeValues.Length, (k_OffsetPercentY + (float)color) / colorValues.Length);
-				}
+				createCell(pair.Key.Size, pair.Key.Color, pair.Value,
+					1 - (k_OffsetPercentX + (float)pair.Key.Size) / Utilities.PipSizesCount,
+					(k_OffsetPercentY + (float)pair.Key.Color) / Utilities.PipColorsCount);
+
 			}
 		}
 
@@ -109,25 +104,17 @@ namespace Homeworlds.View
 			Debug.Log($"Bank!");
 		}
 
+		private void destroyChildren()
+		{
+			Transform[] children = pipsContainer.Cast<Transform>().ToArray();
+			foreach (Transform child in children)
+			{
 #if UNITY_EDITOR
-		private void destroyChildren()
-		{
-			Transform[] children = pipsContainer.Cast<Transform>().ToArray();
-			foreach (Transform child in children)
-			{
 				DestroyImmediate(child.gameObject);
-			}
-		}
-
 #else
-		private void destroyChildren()
-		{
-			Transform[] children = pipsContainer.Cast<Transform>().ToArray();
-			foreach (Transform child in children)
-			{
 				Destroy(child.gameObject);
+#endif
 			}
 		}
-#endif
 	}
 }

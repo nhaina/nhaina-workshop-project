@@ -15,5 +15,17 @@ namespace Homeworlds.Logic
 		{
 			BoardManager.TransformShip(TargetShip, DestinationColor);
 		}
+
+		public void Accept(IBoardMoveVisitor visitor)
+		{
+			if (visitor is ITransformMoveVisitor trnsfrmVisitor)
+			{
+				trnsfrmVisitor.Visit(this);
+			}
+			else
+			{
+				visitor.Visit();
+			}
+		}
 	}
 }

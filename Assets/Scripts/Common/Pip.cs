@@ -31,12 +31,12 @@ namespace Homeworlds.Common
 
 		public bool Equals(Pip other)
 		{
-			return other == this;
+			return Color == other.Color && Size == other.Size;
 		}
 
 		public static bool operator ==(Pip first, Pip second)
 		{
-			return first.GetHashCode() == second.GetHashCode();
+			return first.Equals(second);
 		}
 
 		public static bool operator !=(Pip first, Pip second)

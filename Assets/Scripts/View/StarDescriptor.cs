@@ -114,6 +114,7 @@ namespace Homeworlds.View
 		protected virtual void OnSelected()
 		{
 			Selected?.Invoke(this);
+			Debug.Log($"Star! {Star.Identifier}");
 		}
 	}
 }
