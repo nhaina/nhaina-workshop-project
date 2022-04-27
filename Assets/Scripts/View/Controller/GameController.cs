@@ -14,11 +14,17 @@ namespace Homeworlds.Controller
 		[SerializeField]
 		private PlayerController playerController;
 		private MainController controller;
+		private AI.AiPlayer player;
 
 		private void Awake()
 		{
 			controller = new MainController();
 			controller.BoardManager = new Logic.BoardManager();
+			/*player = new AI.AiPlayer()
+			{
+				Strategy = new AI.AlphaBetaCutoffMinimax(),
+				Player = Common.ePlayer.Player2
+			};*/
 		}
 
 		private void OnEnable()
@@ -52,6 +58,7 @@ namespace Homeworlds.Controller
 		private void Start()
 		{
 			controller.StartGame();
+			//player.GameBoard = controller.BoardManager;
 		}
 	}
 }

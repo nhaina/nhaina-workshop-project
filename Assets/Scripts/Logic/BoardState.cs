@@ -8,11 +8,13 @@ namespace Homeworlds.Logic
 {
 	public sealed class BoardState : IEquatable<BoardState>, ICloneable
 	{
+		private readonly Dictionary<Pip, int> bank;
 		private readonly List<Ship> ships;
 		private readonly List<Star> stars;
 		private Homeworld player1Homeworld;
 		private Homeworld player2Homeworld;
 		private eBoardLifecycle status;
+		private Pip? sacrifiedPip;
 		private const int k_HashPrime = 13;
 		private const int k_HashPrimePlusOne = k_HashPrime + 1;
 
@@ -20,6 +22,15 @@ namespace Homeworlds.Logic
 			: this(new List<Ship>(), new List<Star>(), eBoardLifecycle.Setup,
 				 Homeworld.Empty, Homeworld.Empty)
 		{ }
+
+		private BoardState(BoardState other)
+			: this(other.ships, other.stars, other.status, other.player1Homeworld, other.player2Homeworld)
+		{
+			sacrifiedPip = other.sacrifiedPip;
+			ActionsCounter = other.ActionsCounter;
+			SacrificeRecordedAt = other.SacrificeRecordedAt;
+			ActivePlayer = other.ActivePlayer;
+		}
 
 		public BoardState(IEnumerable<Ship> i_Ships, IEnumerable<Star> i_Stars, eBoardLifecycle i_Status,
 			Homeworld i_Player1Homeworld, Homeworld i_Player2Homeworld)
@@ -29,11 +40,44 @@ namespace Homeworlds.Logic
 			Status = i_Status;
 			player1Homeworld = i_Player1Homeworld;
 			player2Homeworld = i_Player2Homeworld;
+			sacrifiedPip = null;
+			ActionsCounter = 0;
+			SacrificeRecordedAt = -1;
+			bank = new Dictionary<Pip, int>();
+			updateBankState();
+		}
+
+		private void updateBankState()
+		{
+			var pipsGroups = Ships.Select(s => s.Attributes)
+				.Concat(Stars.Select(s => s.Attributes))
+				.Concat(Player1Homeworld.Attributes)
+				.Concat(Player2Homeworld.Attributes)
+				.GroupBy(p => p);
+			foreach (ePipColor color in Enum.GetValues(typeof(ePipColor)))
+			{
+				foreach (ePipSize size in Enum.GetValues(typeof(ePipSize)))
+				{
+					Bank[new Pip(color, size)] = 3;
+				}
+			}
+			foreach (var group in pipsGroups)
+			{
+				Bank[group.Key] -= group.Count();
+				if (Bank[group.Key] == 0)
+				{
+					bank.Remove(group.Key);
+				}
+				else if (Bank[group.Key] < 0)
+				{
+					throw new InvalidOperationException();
+				}
+			}
 		}
 
 		public BoardState Clone()
 		{
-			return new BoardState(ships, stars, Status, player1Homeworld, player2Homeworld);
+			return new BoardState(this);
 		}
 
 		object ICloneable.Clone()
@@ -66,6 +110,11 @@ namespace Homeworlds.Logic
 			string shipsRepr = ships == null ? string.Empty : string.Concat(ships);
 			string starsRepr = stars == null ? string.Empty : string.Concat(stars);
 			return $"{shipsRepr} {starsRepr}";
+		}
+
+		internal void ResetBankState()
+		{
+			throw new NotImplementedException();
 		}
 
 		public override bool Equals(object obj)
@@ -115,6 +164,39 @@ namespace Homeworlds.Logic
 			}
 		}
 
+		public Pip? SacrifiedPip
+		{
+			get
+			{
+				return sacrifiedPip;
+			}
+
+			set
+			{
+				sacrifiedPip = value;
+				if (value != null)
+				{
+					SacrificeRecordedAt = ActionsCounter;
+				}
+				else
+				{
+					SacrificeRecordedAt = -1;
+				}
+			}
+		}
+
+		public int ActionsCounter { get; private set; }
+
+		public int SacrificeRecordedAt { get; private set; }
+
+		public Dictionary<Pip, int> Bank
+		{
+			get
+			{
+				return bank;
+			}
+		}
+
 		public void AddShip(Ship i_ShipToAdd)
 		{
 			if (!IsKnownStar(i_ShipToAdd.Location))
@@ -123,6 +205,7 @@ namespace Homeworlds.Logic
 			}
 
 			ships.Add(i_ShipToAdd);
+			removePipFromBank(i_ShipToAdd.Attributes);
 		}
 
 		public void UpdateShip(Ship i_OriginalShip, Ship i_UpdatedShip)
@@ -134,11 +217,18 @@ namespace Homeworlds.Logic
 
 			int shipIndex = ships.FindIndex(ship => ship.Equals(i_OriginalShip));
 			ships[shipIndex] = i_UpdatedShip;
+			if (i_OriginalShip.Attributes != i_UpdatedShip.Attributes)
+			{
+				addPipToBank(i_OriginalShip.Attributes);
+				removePipFromBank(i_UpdatedShip.Attributes);
+			}
 		}
 
 		public void AddStar(Star i_StarToAdd)
 		{
 			stars.Add(i_StarToAdd);
+
+			removePipFromBank(i_StarToAdd.Attributes);
 		}
 
 		public void RemoveShip(Ship i_ToRemove)
@@ -149,12 +239,14 @@ namespace Homeworlds.Logic
 			}
 
 			ships.Remove(i_ToRemove);
+			addPipToBank(i_ToRemove.Attributes);
 		}
 
 		public void DestroyStar(IStar i_ToRemove)
 		{
 			GenericStarVisitor starVisitor = new GenericStarVisitor(removeStar, visitingHomeworld);
 			i_ToRemove.Accept(starVisitor);
+			updateBankState();
 
 			void visitingHomeworld(Homeworld hw)
 			{
@@ -167,6 +259,11 @@ namespace Homeworlds.Logic
 					player2Homeworld = Homeworld.MarkAsDestroyed(hw);
 				}
 			}
+		}
+
+		public void IncrementActionCounter()
+		{
+			ActionsCounter++;
 		}
 
 		public bool IsStarEmpty(IStar i_Star)
@@ -202,6 +299,7 @@ namespace Homeworlds.Logic
 			{
 				ships.RemoveAll(ship => ship.Location.Equals(i_ToEdit) && (ship.Color == i_ColorToRemove));
 			}
+			updateBankState();
 
 			void visitingHomeworld(Homeworld homeworld)
 			{
@@ -240,6 +338,28 @@ namespace Homeworlds.Logic
 			}
 		}
 
+		private void removePipFromBank(Pip key)
+		{
+			if (!Bank.ContainsKey(key))
+			{
+				throw new InvalidOperationException($"Attempt to remove nonexisting key! {key}");
+			}
+			Bank[key] -= 1;
+			if (Bank[key] <= 0)
+			{
+				Bank.Remove(key);
+			}
+		}
+
+		private void addPipToBank(Pip key)
+		{
+			Bank.TryGetValue(key, out int value);
+			Bank[key] = 1 + value;
+			if (Bank[key] > 3 || Bank[key] < 0)
+			{
+				throw new InvalidOperationException($"Invalid amounts Of pips in the bank! was {Bank[key]}");
+			}
+		}
 
 		#region Static Factory Methods
 

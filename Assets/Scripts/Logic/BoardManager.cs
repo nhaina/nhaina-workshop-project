@@ -7,85 +7,92 @@ namespace Homeworlds.Logic
 {
 	public class BoardManager
 	{
-		private readonly Dictionary<Pip, int> bank;
 		private BoardState currentState;
-		private Pip? sacrifiedPip;
-		private int actionsCounter;
-		private int sacrificeRecordedAt;
+		public event Action BoardFinishSetup;
 		public event Action<BoardState> BoardUpdated;
+		public event Action<eBoardLifecycle> GameEnded;
 		public event Action TurnEnded;
 
 		public BoardState CurrentState
 		{
 			get
 			{
-				return currentState.Clone();
+				return currentState;
 			}
 
 			set
 			{
-				currentState = value.Clone();
+				currentState = value;
 			}
 		}
 
 		public MovesFactory MovesFactory { get; set; }
 
-		public IReadOnlyDictionary<Pip, int> BankState { get { return bank; } }
+		public IReadOnlyDictionary<Pip, int> BankState { get { return CurrentState.Bank; } }
 
 		public BoardManager()
 		{
-			bank = new Dictionary<Pip, int>();
 			MovesFactory = new MovesFactory();
 		}
 
 		protected virtual void OnBoardUpdated()
 		{
-			BoardUpdated?.Invoke(currentState);
+			BoardUpdated?.Invoke(CurrentState);
+		}
+
+		protected virtual void OnBoardFinishSetup()
+		{
+			BoardFinishSetup?.Invoke();
+		}
+
+		protected virtual void OnGameEnded(eBoardLifecycle i_BoardStatus)
+		{
+			GameEnded?.Invoke(i_BoardStatus);
 		}
 
 		public void StartNewGame()
 		{
-			currentState = BoardState.Empty;
-			sacrifiedPip = null;
-			actionsCounter = 0;
-			sacrificeRecordedAt = -1;
+			CurrentState = BoardState.Empty;
 		}
 
 		// TODO: Add tests. Might break if eBoardLifecycle will change
 		public void CheckBoardStatus()
 		{
-			if (currentState.Status == eBoardLifecycle.Ongoing)
+			if (CurrentState.Status == eBoardLifecycle.Ongoing)
 			{
-				bool hw1DestroyedOrEmpty = currentState.Player1Homeworld.Destroyed || currentState.IsHomeworldAbandoned(currentState.Player1Homeworld);
-				bool hw2DestroyedOrEmpty = currentState.Player2Homeworld.Destroyed || currentState.IsHomeworldAbandoned(currentState.Player2Homeworld);
+				bool hw1DestroyedOrEmpty = CurrentState.Player1Homeworld.Destroyed || CurrentState.IsHomeworldAbandoned(CurrentState.Player1Homeworld);
+				bool hw2DestroyedOrEmpty = CurrentState.Player2Homeworld.Destroyed || CurrentState.IsHomeworldAbandoned(CurrentState.Player2Homeworld);
 				int status = (hw1DestroyedOrEmpty ? 2 : 0) + (hw2DestroyedOrEmpty ? 1 : 0);
-				currentState.Status = 1 + (eBoardLifecycle)status;
+				CurrentState.Status = 1 + (eBoardLifecycle)status;
+			}
+			if (CurrentState.Status != eBoardLifecycle.Ongoing && CurrentState.Status != eBoardLifecycle.Setup)
+			{
+				OnGameEnded(CurrentState.Status);
 			}
 		}
 
 		public void SetupGame(Homeworld player1Homeworld, Ship player1Mothership, Homeworld player2Homeworld, Ship player2Mothership)
 		{
-			if (currentState == null || currentState.Status != eBoardLifecycle.Setup)
+			if (CurrentState == null || CurrentState.Status != eBoardLifecycle.Setup)
 			{
 				throw new InvalidOperationException("Cannot setup an ended or ongoing game!");
 			}
 
-			currentState = BoardState.CreateInitial(player1Homeworld, player1Mothership, player2Homeworld, player2Mothership);
-			currentState.Status = eBoardLifecycle.Ongoing;
-			updateBankState();
+			CurrentState = BoardState.CreateInitial(player1Homeworld, player1Mothership, player2Homeworld, player2Mothership);
+			CurrentState.Status = eBoardLifecycle.Ongoing;
+			OnBoardFinishSetup();
 			actionEnded(false);
 		}
 
 		public void DeclareCatastrophe(IStar i_Location, ePipColor i_CatastropheColor)
 		{
-			currentState.RemoveColorFromStar(i_Location, i_CatastropheColor);
-			updateBankState();
+			CurrentState.RemoveColorFromStar(i_Location, i_CatastropheColor);
 			actionEnded(false);
 		}
 
 		public IEnumerable<IBoardMove> CanDeclareCatastrophe(IStar star)
 		{
-			List<IBoardMove> catMoves = currentState.Ships.Where(s => s.Location.Equals(star))
+			List<IBoardMove> catMoves = CurrentState.Ships.Where(s => s.Location.Equals(star))
 				.Select(s => s.Attributes).Concat(star.Attributes)
 				.GroupBy(p => p.Color).Where(grp => grp.Count() >= 4)
 				.Select(grp => MovesFactory.CreateCatastropheMove(star, grp.Key)).ToList();
@@ -93,48 +100,28 @@ namespace Homeworlds.Logic
 			return catMoves;
 		}
 
-		private void updateBankState()
-		{
-			var pipsGroups = currentState.Ships.Select(s => s.Attributes)
-				.Concat(currentState.Stars.Select(s => s.Attributes))
-				.Concat(currentState.Player1Homeworld.Attributes)
-				.Concat(currentState.Player2Homeworld.Attributes)
-				.GroupBy(p => p);
-			foreach (ePipColor color in Enum.GetValues(typeof(ePipColor)))
-			{
-				foreach (ePipSize size in Enum.GetValues(typeof(ePipSize)))
-				{
-					bank[new Pip(color, size)] = 3;
-				}
-			}
-			foreach (var group in pipsGroups)
-			{
-				bank[group.Key] -= group.Count();
-			}
-		}
-
 		public int SacrificeShip(Ship i_Sacrified)
 		{
-			if (sacrifiedPip.HasValue && (int)sacrifiedPip.Value.Size + sacrificeRecordedAt >= actionsCounter)
+			Pip? sacrified = CurrentState.SacrifiedPip;
+			if (sacrified.HasValue &&
+				(int)sacrified.Value.Size + CurrentState.SacrificeRecordedAt >= CurrentState.ActionsCounter)
 			{
 				throw new InvalidOperationException("Cannot sacrifice two ships in a row!");
 			}
-			currentState.RemoveShip(i_Sacrified);
+
+			CurrentState.RemoveShip(i_Sacrified);
 			tryRemoveStar(i_Sacrified.Location);
-			addPipToBank(i_Sacrified.Attributes);
-			sacrifiedPip = i_Sacrified.Attributes;
-			sacrificeRecordedAt = actionsCounter;
+			CurrentState.SacrifiedPip = i_Sacrified.Attributes;
 			actionEnded(false);
-			return 1 + (int)sacrifiedPip.Value.Size;
+			return 1 + (int)i_Sacrified.Attributes.Size;
 		}
 
 		private bool tryRemoveStar(IStar i_ToRemove)
 		{
 			bool removed = false;
-			if (i_ToRemove is Star toRemoveAsStar && currentState.IsStarEmpty(i_ToRemove))
+			if (i_ToRemove is Star toRemoveAsStar && CurrentState.IsStarEmpty(i_ToRemove))
 			{
-				currentState.DestroyStar(toRemoveAsStar);
-				addPipToBank(toRemoveAsStar.Attributes);
+				CurrentState.DestroyStar(toRemoveAsStar);
 				removed = true;
 			}
 
@@ -147,7 +134,7 @@ namespace Homeworlds.Logic
 				i_Initiator.Location.Equals(i_Target.Location) && i_Initiator.Owner != i_Target.Owner &&
 				i_Initiator.Size >= i_Target.Size)
 			{
-				currentState.UpdateShip(i_Target, new Ship(i_Target.Attributes, i_Initiator.Owner, i_Initiator.Location));
+				CurrentState.UpdateShip(i_Target, new Ship(i_Target.Attributes, i_Initiator.Owner, i_Initiator.Location));
 				actionEnded();
 			}
 		}
@@ -156,29 +143,34 @@ namespace Homeworlds.Logic
 		{
 			get
 			{
-				return currentState.ActivePlayer;
+				return CurrentState.ActivePlayer;
 			}
 			set
 			{
-				currentState.ActivePlayer = value;
+				CurrentState.ActivePlayer = value;
 			}
 		}
 
 		public eBoardLifecycle BoardStatus
 		{
-			get { return currentState.Status; }
+			get { return CurrentState.Status; }
 		}
 
-		private void actionEnded(bool updateCounter = true)
+		public void EndTurn()
+		{
+			actionEnded(true, true);
+		}
+
+		private void actionEnded(bool updateCounter = true, bool forceEnd = false)
 		{
 			if (updateCounter)
 			{
-				++actionsCounter;
-				if (sacrifiedPip.HasValue)
+				CurrentState.IncrementActionCounter();
+				if (CurrentState.SacrifiedPip.HasValue)
 				{
-					if (actionsCounter > (int)sacrifiedPip.Value.Size + sacrificeRecordedAt)
+					if (forceEnd || CurrentState.ActionsCounter > (int)CurrentState.SacrifiedPip.Value.Size + CurrentState.SacrificeRecordedAt)
 					{
-						sacrifiedPip = null;
+						CurrentState.SacrifiedPip = null;
 						turnEnded();
 					}
 				}
@@ -193,6 +185,8 @@ namespace Homeworlds.Logic
 
 		private void turnEnded()
 		{
+			CheckBoardStatus();
+			CurrentState.ActivePlayer = 1 - CurrentState.ActivePlayer;
 			OnTurnEnded();
 		}
 
@@ -206,13 +200,12 @@ namespace Homeworlds.Logic
 			if (isSacrifiedColor(ePipColor.Green) && isColorAccessible(i_Initiator, ePipColor.Green))
 			{
 				bool succeed = false;
-				foreach (ePipSize size in Enum.GetValues(typeof(ePipSize)))
+				foreach (ePipSize size in Utilities.AllPipSizes)
 				{
 					Pip key = new Pip(i_Initiator.Color, size);
-					if (bank.ContainsKey(key))
+					if (CurrentState.Bank.ContainsKey(key))
 					{
-						currentState.AddShip(new Ship(key, i_Initiator.Owner, i_Initiator.Location));
-						removePipFromBank(key);
+						CurrentState.AddShip(new Ship(key, i_Initiator.Owner, i_Initiator.Location));
 						actionEnded();
 						succeed = true;
 						break;
@@ -234,13 +227,11 @@ namespace Homeworlds.Logic
 			if (isSacrifiedColor(ePipColor.Blue) && isColorAccessible(i_Initiator, ePipColor.Blue))
 			{
 				Ship transformed = new Ship(new Pip(i_DestColor, i_Initiator.Size), i_Initiator.Owner, i_Initiator.Location);
-				if (!bank.ContainsKey(transformed.Attributes))
+				if (!CurrentState.Bank.ContainsKey(transformed.Attributes))
 				{
 					throw new InvalidOperationException($"Can't do that. No {transformed.Attributes} pip available!");
 				}
-				currentState.UpdateShip(i_Initiator, transformed);
-				addPipToBank(i_Initiator.Attributes);
-				removePipFromBank(transformed.Attributes);
+				CurrentState.UpdateShip(i_Initiator, transformed);
 				actionEnded();
 			}
 		}
@@ -250,17 +241,16 @@ namespace Homeworlds.Logic
 			if (isSacrifiedColor(ePipColor.Yellow) && isColorAccessible(i_Initiator, ePipColor.Yellow) &&
 				areSizesConsecutive(i_Initiator.Location, i_NewLocation))
 			{
-				if (!currentState.IsKnownStar(i_NewLocation) && i_NewLocation is Star newStar)
+				if (!CurrentState.IsKnownStar(i_NewLocation) && i_NewLocation is Star newStar)
 				{
-					if (!bank.ContainsKey(newStar.Attributes))
+					if (!CurrentState.Bank.ContainsKey(newStar.Attributes))
 					{
 						throw new InvalidOperationException($"Can't do that. No {newStar.Attributes} pip available!");
 					}
-					currentState.AddStar(newStar);
-					removePipFromBank(newStar.Attributes);
+					CurrentState.AddStar(newStar);
 				}
 				IStar oldLocation = i_Initiator.Location;
-				currentState.UpdateShip(i_Initiator, new Ship(i_Initiator.Attributes, i_Initiator.Owner, i_NewLocation));
+				CurrentState.UpdateShip(i_Initiator, new Ship(i_Initiator.Attributes, i_Initiator.Owner, i_NewLocation));
 				tryRemoveStar(oldLocation);
 				actionEnded();
 			}
@@ -268,7 +258,7 @@ namespace Homeworlds.Logic
 
 		public bool IsKnownStarOrHomeworld(IStar i_Location)
 		{
-			return currentState.IsKnownStar(i_Location);
+			return CurrentState.IsKnownStar(i_Location);
 		}
 
 		//TODO: refactor this. please
@@ -276,17 +266,18 @@ namespace Homeworlds.Logic
 		{
 			List<IBoardMove> available = new List<IBoardMove>();
 			IEnumerable<ePipColor> availableColors;
-			if (!sacrifiedPip.HasValue)
+			IEnumerable<Pip> bankPips = CurrentState.Bank.Keys;
+			if (!CurrentState.SacrifiedPip.HasValue)
 			{
 				available.Add(MovesFactory.CreateSacrificeMove(i_Initiator));
-				IEnumerable<Ship> shipsNearInitiator = currentState.Ships.Where(ship =>
+				IEnumerable<Ship> shipsNearInitiator = CurrentState.Ships.Where(ship =>
 					ship.Owner == i_Initiator.Owner &&
 					ship.Location.Equals(i_Initiator.Location));
 				availableColors = getAvailableColors(shipsNearInitiator, i_Initiator.Location);
 			}
 			else
 			{
-				availableColors = new List<ePipColor> { sacrifiedPip.Value.Color };
+				availableColors = new List<ePipColor> { CurrentState.SacrifiedPip.Value.Color };
 			}
 
 			foreach (ePipColor color in availableColors)
@@ -294,24 +285,27 @@ namespace Homeworlds.Logic
 				switch (color)
 				{
 					case ePipColor.Red:
-						IEnumerable<Ship> enemyShips = currentState.Ships.Where(ship =>
+						IEnumerable<Ship> enemyShips = CurrentState.Ships.Where(ship =>
 						ship.Owner != i_Initiator.Owner && ship.Location.Equals(i_Initiator.Location)
 						);
 						available.AddRange(enemyShips.Where(es => es.Size <= i_Initiator.Size)
 							.Select(es => MovesFactory.CreateRaidMove(i_Initiator, es)));
 						break;
 					case ePipColor.Green:
-						available.Add(MovesFactory.CreateBuildMove(i_Initiator));
+						if (bankPips.Any(p => p.Color == i_Initiator.Color))
+						{
+							available.Add(MovesFactory.CreateBuildMove(i_Initiator));
+						}
 						break;
 					case ePipColor.Blue:
 						available.AddRange(
-							bank.Keys.Where(p => i_Initiator.Size == p.Size && i_Initiator.Color != p.Color)
+							bankPips.Where(p => i_Initiator.Size == p.Size && i_Initiator.Color != p.Color)
 							.Select(p => MovesFactory.CreateTransformMove(i_Initiator, p.Color)));
 						break;
 					case ePipColor.Yellow:
-						IEnumerable<IStar> allLocations = currentState.Stars.Cast<IStar>()
-							.Concat(new IStar[2] { currentState.Player1Homeworld, currentState.Player2Homeworld })
-							.Concat(bank.Keys.Select(p => (IStar)new Star(p)))
+						IEnumerable<IStar> allLocations = CurrentState.Stars.Cast<IStar>()
+							.Concat(new IStar[2] { CurrentState.Player1Homeworld, CurrentState.Player2Homeworld })
+							.Concat(bankPips.Select(p => (IStar)new Star(p)))
 							.Where(s => areSizesConsecutive(s, i_Initiator.Location));
 						available.AddRange(allLocations.Select(l => MovesFactory.CreateFlyMove(i_Initiator, l)));
 						break;
@@ -319,16 +313,23 @@ namespace Homeworlds.Logic
 			}
 
 			available.ForEach(bm => bm.BoardManager = this);
-
 			return available;
+		}
+
+		public IEnumerable<IBoardMove> GetAllAvailableMoves(ePlayer forPlayer)
+		{
+			return CurrentState.Ships.Where(ship => ship.Owner == forPlayer).SelectMany(ship => GetAvailableMoves(ship))
+				.Concat(CurrentState.Stars.SelectMany(st => CanDeclareCatastrophe(st)))
+				.Concat(CanDeclareCatastrophe(CurrentState.Player1Homeworld))
+				.Concat(CanDeclareCatastrophe(CurrentState.Player2Homeworld)).ToList();
 		}
 
 		private IEnumerable<ePipColor> getAvailableColors(IEnumerable<Ship> i_Ships, IStar i_Location)
 		{
 			List<ePipColor> colors = i_Ships.Select(s => s.Color).Concat(i_Location.Attributes.Select(p => p.Color)).Distinct().ToList();
-			if (sacrifiedPip.HasValue)
+			if (CurrentState.SacrifiedPip.HasValue)
 			{
-				colors.Add(sacrifiedPip.Value.Color);
+				colors.Add(CurrentState.SacrifiedPip.Value.Color);
 			}
 			return colors;
 		}
@@ -343,12 +344,12 @@ namespace Homeworlds.Logic
 
 		private bool isSacrifiedColor(ePipColor i_QueriedColor)
 		{
-			return !sacrifiedPip.HasValue || sacrifiedPip.Value.Color == i_QueriedColor;
+			return !CurrentState.SacrifiedPip.HasValue || CurrentState.SacrifiedPip.Value.Color == i_QueriedColor;
 		}
 
 		private bool isColorAccessible(Ship i_ActionInitiator, ePipColor i_QueriedColor)
 		{
-			return (sacrifiedPip.HasValue && sacrifiedPip.Value.Color == i_QueriedColor) ||
+			return (CurrentState.SacrifiedPip.HasValue && CurrentState.SacrifiedPip.Value.Color == i_QueriedColor) ||
 				i_ActionInitiator.Location.Attributes.Any(p => p.Color == i_QueriedColor) ||
 				isColoredShipAccessible(i_ActionInitiator, i_QueriedColor);
 
@@ -356,24 +357,9 @@ namespace Homeworlds.Logic
 
 		private bool isColoredShipAccessible(Ship i_ActionInitiator, ePipColor i_QueriedColor)
 		{
-			return i_ActionInitiator.Color == i_QueriedColor || currentState.Ships.Any(
+			return i_ActionInitiator.Color == i_QueriedColor || CurrentState.Ships.Any(
 						s => s.Location.Equals(i_ActionInitiator.Location) &&
 					   s.Owner == i_ActionInitiator.Owner && s.Color == i_QueriedColor);
-		}
-
-		private void removePipFromBank(Pip key)
-		{
-			bank[key] -= 1;
-			if (bank[key] <= 0)
-			{
-				bank.Remove(key);
-			}
-		}
-
-		private void addPipToBank(Pip key)
-		{
-			bank.TryGetValue(key, out int value);
-			bank[key] = 1 + value;
 		}
 	}
 }

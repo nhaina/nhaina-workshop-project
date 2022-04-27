@@ -10,7 +10,6 @@ namespace Homeworlds.Controller
 	public class MainController
 	{
 		public event Action<BoardState> BoardUpdated;
-		public event Action<eBoardLifecycle> GameEnded;
 
 		private ViewBoard viewBoard;
 		private BoardManager boardManager;
@@ -55,20 +54,17 @@ namespace Homeworlds.Controller
 				if (boardManager != null)
 				{
 					boardManager.BoardUpdated -= boardUpdated;
-					boardManager.TurnEnded -= turnEnded;
 				}
 				boardManager = value;
 				if (boardManager != null)
 				{
 					boardManager.BoardUpdated += boardUpdated;
-					boardManager.TurnEnded += turnEnded;
 				}
 			}
 		}
 
 
 		public GUIManager GUI { get; set; }
-		public PlayerController PlayerController { get; set; }
 
 		protected virtual void OnBoardUpdated(BoardState i_NewState)
 		{
@@ -84,34 +80,6 @@ namespace Homeworlds.Controller
 		private void updateViewField(BoardState i_NewState)
 		{
 			View.UpdateField(i_NewState, BoardManager.BankState);
-		}
-
-		protected virtual void OnGameEnded(eBoardLifecycle i_BoardStatus)
-		{
-			GameEnded?.Invoke(i_BoardStatus);
-		}
-
-		private void turnEnded()
-		{
-			checkBoardState();
-			BoardManager.ActivePlayer = BoardManager.ActivePlayer == ePlayer.Player1 ? ePlayer.Player2 : ePlayer.Player1;
-		}
-
-		private void gameEnded(eBoardLifecycle i_BoardStatus)
-		{
-			OnGameEnded(i_BoardStatus);
-		}
-
-		private void checkBoardState()
-		{
-			BoardManager.CheckBoardStatus();
-			eBoardLifecycle boardStatus = BoardManager.BoardStatus;
-			if (boardStatus == eBoardLifecycle.Player1Won ||
-				boardStatus == eBoardLifecycle.Player2Won ||
-				boardStatus == eBoardLifecycle.Draw)
-			{
-				gameEnded(boardStatus);
-			}
 		}
 
 		public void StartGame()

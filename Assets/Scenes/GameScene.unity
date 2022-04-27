@@ -1131,6 +1131,11 @@ PrefabInstance:
       propertyPath: m_Name
       value: TinyConsole
       objectReference: {fileID: 0}
+    - target: {fileID: 7095971556386094913, guid: 3db7c70da7621284ab79fbb6c8f75ad4,
+        type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 7095971556386094914, guid: 3db7c70da7621284ab79fbb6c8f75ad4,
         type: 3}
       propertyPath: m_FontData.m_Alignment
