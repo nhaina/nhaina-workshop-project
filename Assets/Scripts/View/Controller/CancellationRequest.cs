@@ -6,7 +6,7 @@ namespace Homeworlds.View
 {
 	public class CancellationRequest
 	{
-		private bool m_CancelRequested;
+		private bool cancelRequested;
 
 		public CancellationRequest()
 			:this(false)
@@ -14,13 +14,13 @@ namespace Homeworlds.View
 
 		public CancellationRequest(bool i_RequestCancel)
 		{
-			m_CancelRequested = i_RequestCancel;
+			cancelRequested = i_RequestCancel;
 		}
 
 		public bool RequestCancel
 		{
-			get { return m_CancelRequested; }
-			set { m_CancelRequested |= value; }
+			get { return cancelRequested; }
+			set { cancelRequested |= value; }
 		}
 
 	}

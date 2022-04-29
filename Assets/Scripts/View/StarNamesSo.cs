@@ -2,14 +2,17 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-[CreateAssetMenu(fileName = "StarNames", menuName = "ScriptableObjects/StarNames", order = 1)]
-public class StarNamesSo : ScriptableObject
+namespace Homeworlds.View
 {
-	[SerializeField]
-	private List<string> names;
-
-	public string this[int index]
+	[CreateAssetMenu(fileName = "StarNames", menuName = "ScriptableObjects/StarNames", order = 1)]
+	public class StarNamesSo : ScriptableObject
 	{
-		get { return names[index % names.Count]; }
+		[SerializeField]
+		private List<string> names;
+
+		public string this[int index]
+		{
+			get { return names[index % names.Count]; }
+		}
 	}
 }

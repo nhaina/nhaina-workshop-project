@@ -9,6 +9,7 @@ using UnityEngine.UI;
 
 namespace Homeworlds.View
 {
+	[RequireComponent(typeof(Canvas))]
 	public class GUIManager : MonoBehaviour
 	{
 		[SerializeField]
@@ -21,6 +22,11 @@ namespace Homeworlds.View
 		public UIControlPanel MainPanel { get { return mainPanel; } set { mainPanel = value; } }
 
 		public bool IsUIOpen { get { return mainPanel.gameObject.activeInHierarchy; } }
+
+		private void Awake()
+		{
+			GetComponent<Canvas>().worldCamera = Camera.main;
+		}
 
 		public void PopSelection(IEnumerable<IUIDrawable> i_Options, string i_Title, int i_MaxControlsInRow = -1)
 		{
